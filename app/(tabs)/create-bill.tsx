@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -7,10 +7,9 @@ import {
     TextInput,
     Pressable,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { supabase } from "@/lib/supabase";
 
-/* ---------------- DATA ---------------- */
+/* ---------------- STATIC DATA ---------------- */
 
 const problemsList = [
     { id: "ac-not-cooling", label: "A/C Not Cooling" },
@@ -21,18 +20,16 @@ const problemsList = [
     { id: "other", label: "Other" },
 ];
 
-const servicesList = [
-    { id: "servicing", label: "Servicing", price: 500 },
-    { id: "leak-testing", label: "Leak Testing", price: 300 },
-    { id: "oil-charging", label: "Oil Charging", price: 400 },
-    { id: "gas-charging", label: "Gas Charging", price: 1500 },
-    { id: "labour", label: "Labour Charge", price: 500 },
-];
+/* ---------------- TYPES ---------------- */
+
+type Service = {
+    id: string;
+    service_name: string;
+};
 
 /* ---------------- SCREEN ---------------- */
 
 export default function CreateBillScreen() {
-    const router = useRouter();
     const [step, setStep] = useState(1);
 
     // Customer
@@ -45,13 +42,30 @@ export default function CreateBillScreen() {
     const [problems, setProblems] = useState<string[]>([]);
     const [otherProblem, setOtherProblem] = useState("");
 
-    // Services
+    // Services (DB)
+    const [servicesList, setServicesList] = useState<Service[]>([]);
     const [services, setServices] = useState<Record<string, number>>({});
     const [otherWork, setOtherWork] = useState("");
     const [otherPrice, setOtherPrice] = useState(0);
 
     const total =
         Object.values(services).reduce((s, v) => s + v, 0) + (otherPrice || 0);
+
+    useEffect(() => {
+        const fetchServices = async () => {
+            const { data, error } = await supabase
+                .from("services")
+                .select("id, service_name")
+                .eq("is_active", true)
+                .order("service_name");
+
+            if (!error && data) {
+                setServicesList(data);
+            }
+        };
+
+        fetchServices();
+    }, []);
 
     const toggleProblem = (id: string) => {
         setProblems((p) =>
@@ -71,26 +85,6 @@ export default function CreateBillScreen() {
 
     return (
         <ScrollView style={styles.screen}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Pressable onPress={() => router.back()}>
-                    <Feather name="arrow-left" size={22} />
-                </Pressable>
-
-                <View style={styles.brand}>
-                    <MaterialCommunityIcons
-                        name="snowflake"
-                        size={18}
-                        color="#2563eb"
-                    />
-                    <Text style={styles.brandText}>Create Bill</Text>
-                </View>
-
-                <Pressable onPress={() => router.replace("/login")}>
-                    <Feather name="log-out" size={18} />
-                </Pressable>
-            </View>
-
             {/* Step Indicator */}
             <View style={styles.steps}>
                 {[1, 2, 3].map((n) => (
@@ -173,15 +167,14 @@ export default function CreateBillScreen() {
                     {servicesList.map((s) => (
                         <Pressable
                             key={s.id}
-                            onPress={() => toggleService(s.id, s.price)}
+                            onPress={() => toggleService(s.id, 0)}
                             style={[
                                 styles.option,
-                                services[s.id] !== undefined && styles.optionActive,
+                                services[s.id] !== undefined &&
+                                styles.optionActive,
                             ]}
                         >
-                            <Text>
-                                {s.label} – ₹{services[s.id] ?? s.price}
-                            </Text>
+                            <Text>{s.service_name}</Text>
                         </Pressable>
                     ))}
 
@@ -228,15 +221,13 @@ export default function CreateBillScreen() {
 
 const styles = StyleSheet.create({
     screen: { flex: 1, backgroundColor: "#f1f5f9" },
-    header: {
-        padding: 16,
+
+    steps: {
         flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        paddingTop: 16,
     },
-    brand: { flexDirection: "row", alignItems: "center", gap: 6 },
-    brandText: { fontSize: 16, fontWeight: "600" },
-    steps: { flexDirection: "row", justifyContent: "center", gap: 8 },
     step: {
         width: 32,
         height: 32,
@@ -247,6 +238,7 @@ const styles = StyleSheet.create({
     },
     stepActive: { backgroundColor: "#2563eb" },
     stepText: { color: "#fff" },
+
     card: {
         margin: 16,
         padding: 16,

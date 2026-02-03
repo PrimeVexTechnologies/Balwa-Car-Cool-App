@@ -1,15 +1,14 @@
-import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { BackHandler } from "react-native";
+import { useRouter } from "expo-router";
 import { useCallback } from "react";
-import { supabase } from "@/lib/supabase";
+import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 const ROUTES = {
     CREATE_BILL: "/create-bill",
     SERVICE_HISTORY: "/service-history",
     LOGIN: "/login",
+    INVENTORY: "/inventory",
 } as const;
 
 const dashboardCards = [
@@ -30,17 +29,18 @@ const dashboardCards = [
         disabled: false,
     },
     {
-        title: "Total Bills",
-        description: "View billing statistics",
-        icon: "file-text",
-        color: "#e5e7eb",
+        title: "Inventory",
+        description: "Manage garage inventory",
+        icon: "box",
+        color: "#401c0a",
+        route: ROUTES.INVENTORY,
         disabled: false,
     },
     {
-        title: "Inventory",
-        description: "Manage garage inventory",
-        icon: "settings",
-        color: "#e5e7eb",
+        title: "Total Bills",
+        description: "View billing statistics",
+        icon: "file-text",
+        color: "#dbd058",
         disabled: false,
     },
 ] as const;
@@ -48,60 +48,48 @@ const dashboardCards = [
 export default function DashboardScreen() {
     const router = useRouter();
 
-    // ✅ Correct Android back-button handling
+    // ✅ Block Android back button on Dashboard
     useFocusEffect(
         useCallback(() => {
-            const onBackPress = () => {
-                // Block back navigation (prevents going to Login)
-                return true;
-            };
+            const onBackPress = () => true;
 
             const subscription = BackHandler.addEventListener(
                 "hardwareBackPress",
                 onBackPress
             );
 
-            return () => {
-                subscription.remove();
-            };
+            return () => subscription.remove();
         }, [])
     );
 
     return (
         <ScrollView style={styles.screen}>
-            {/* Header */}
-            <View style={styles.header}>
-                <View style={styles.brand}>
-                    <View style={styles.brandIcon}>
-                        <MaterialCommunityIcons
-                            name="snowflake"
-                            size={20}
-                            color="#ffffff"
-                        />
-                    </View>
-                    <Text style={styles.brandText}>Balwa Car Cool</Text>
+            <Text style={styles.title}>Balwa Car Cool</Text>
+
+            {/* Stats (still hardcoded – will be DB-driven next) */}
+            <View style={styles.statsRow}>
+                <View style={styles.statPill}>
+                    <Text style={styles.statSmallLabel}>Today</Text>
+                    <Text style={styles.statMain}>3</Text>
+                    <Text style={styles.statSub}>Bills</Text>
                 </View>
 
-                <Pressable
-                    onPress={async () => {
-                        await supabase.auth.signOut();
-                        router.replace(ROUTES.LOGIN);
-                    }}
-                >
-                    <View style={styles.logout}>
-                        <Feather name="log-out" size={16} color="#64748b" />
-                        <Text style={styles.logoutText}>Logout</Text>
-                    </View>
-                </Pressable>
+                <View style={styles.statPill}>
+                    <Text style={styles.statSmallLabel}>Revenue</Text>
+                    <Text style={[styles.statMain, { color: "#16a34a" }]}>
+                        ₹4,500
+                    </Text>
+                    <Text style={styles.statSub}>Today</Text>
+                </View>
+
+                <View style={styles.statPill}>
+                    <Text style={styles.statSmallLabel}>This Month</Text>
+                    <Text style={styles.statMain}>45</Text>
+                    <Text style={styles.statSub}>Bills</Text>
+                </View>
             </View>
 
-            {/* Content */}
             <View style={styles.container}>
-                <Text style={styles.title}>Dashboard</Text>
-                <Text style={styles.subtitle}>
-                    Welcome back! What would you like to do today?
-                </Text>
-
                 {/* Action Cards */}
                 <View style={styles.cards}>
                     {dashboardCards.map((card) => (
@@ -137,26 +125,6 @@ export default function DashboardScreen() {
                         </Pressable>
                     ))}
                 </View>
-
-                {/* Stats */}
-                <View style={styles.stats}>
-                    <View style={styles.statCard}>
-                        <Text style={styles.statLabel}>Today's Bills</Text>
-                        <Text style={styles.statValue}>3</Text>
-                    </View>
-
-                    <View style={styles.statCard}>
-                        <Text style={styles.statLabel}>Today's Revenue</Text>
-                        <Text style={[styles.statValue, { color: "#16a34a" }]}>
-                            ₹4,500
-                        </Text>
-                    </View>
-
-                    <View style={styles.statCard}>
-                        <Text style={styles.statLabel}>This Month</Text>
-                        <Text style={styles.statValue}>45 Bills</Text>
-                    </View>
-                </View>
             </View>
         </ScrollView>
     );
@@ -171,69 +139,20 @@ const styles = StyleSheet.create({
         backgroundColor: "#f1f5f9",
     },
 
-    header: {
-        backgroundColor: "#ffffff",
-        paddingHorizontal: 16,
-        paddingTop: 30,
-        paddingVertical: 12,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        borderBottomWidth: 1,
-        borderBottomColor: "#e5e7eb",
-    },
-
-    brand: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-
-    brandIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: "#2563eb",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-
-    brandText: {
-        fontSize: 18,
-        fontWeight: "700",
-        color: "#0f172a",
-    },
-
-    logout: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-    },
-
-    logoutText: {
-        fontSize: 14,
-        color: "#64748b",
-    },
-
     container: {
         padding: 16,
     },
 
-    title: {
-        fontSize: 26,
-        fontWeight: "700",
-        color: "#0f172a",
-        marginBottom: 4,
-    },
-
-    subtitle: {
-        fontSize: 14,
-        color: "#64748b",
-        marginBottom: 24,
-    },
-
     cards: {
         gap: 16,
+    },
+
+    title: {
+        fontSize: 28,
+        fontWeight: "700",
+        color: "#0f172a",
+        marginTop: 24,
+        marginHorizontal: 16,
     },
 
     card: {
@@ -273,30 +192,39 @@ const styles = StyleSheet.create({
         color: "#64748b",
     },
 
-    stats: {
-        marginTop: 32,
-        gap: 16,
+    statsRow: {
+        flexDirection: "row",
+        gap: 12,
+        paddingHorizontal: 16,
+        marginTop: 16,
     },
 
-    statCard: {
+    statPill: {
+        flex: 1,
         backgroundColor: "#ffffff",
         borderRadius: 14,
-        padding: 20,
+        paddingVertical: 14,
+        alignItems: "center",
         shadowColor: "#000",
         shadowOpacity: 0.05,
-        shadowRadius: 8,
+        shadowRadius: 6,
         elevation: 2,
     },
 
-    statLabel: {
-        fontSize: 13,
+    statSmallLabel: {
+        fontSize: 12,
         color: "#64748b",
-        marginBottom: 6,
     },
 
-    statValue: {
-        fontSize: 28,
+    statMain: {
+        fontSize: 22,
         fontWeight: "700",
         color: "#0f172a",
+        marginVertical: 2,
+    },
+
+    statSub: {
+        fontSize: 11,
+        color: "#94a3b8",
     },
 });
