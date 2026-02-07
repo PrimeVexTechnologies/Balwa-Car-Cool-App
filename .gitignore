@@ -38,8 +38,11 @@ yarn-error.*
 
 app-example
 
+<<<<<<< HEAD
 .vscode/
 
+=======
+>>>>>>> 09395ca (Initial project setup)
 # generated native folders
 /ios
 /android
