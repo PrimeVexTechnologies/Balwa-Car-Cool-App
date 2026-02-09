@@ -2,6 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 const ROUTES = {
@@ -9,6 +11,7 @@ const ROUTES = {
     SERVICE_HISTORY: "/service-history",
     LOGIN: "/login",
     INVENTORY: "/inventory",
+    TOTAL_BILLS: "/total-bills",
 } as const;
 
 const dashboardCards = [
@@ -41,14 +44,37 @@ const dashboardCards = [
         description: "View billing statistics",
         icon: "file-text",
         color: "#dbd058",
+        route: ROUTES.TOTAL_BILLS,
         disabled: false,
     },
 ] as const;
 
 export default function DashboardScreen() {
     const router = useRouter();
+    const [loadingStats, setLoadingStats] = useState(true);
 
-    // ✅ Block Android back button on Dashboard
+    const [stats, setStats] = useState({
+        todayBills: 0,
+        todayRevenue: 0,
+        monthBills: 0,
+    });
+
+    useEffect(() => {
+        const loadStats = async () => {
+            const { data, error } = await supabase.rpc("get_dashboard_stats");
+
+            if (!error && data) {
+                setStats({
+                    todayBills: data.today_bill_count,
+                    todayRevenue: data.today_revenue,
+                    monthBills: data.month_bill_count,
+                });
+            }
+        };
+
+        loadStats();
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
             const onBackPress = () => true;
@@ -62,29 +88,54 @@ export default function DashboardScreen() {
         }, [])
     );
 
+    useEffect(() => {
+        const loadStats = async () => {
+            setLoadingStats(true);
+
+            const { data, error } = await supabase.rpc("get_dashboard_stats");
+
+            if (!error && data) {
+                setStats({
+                    todayBills: data.today_bill_count,
+                    todayRevenue: data.today_revenue,
+                    monthBills: data.month_bill_count,
+                });
+            }
+
+            setLoadingStats(false);
+        };
+
+        loadStats();
+    }, []);
+
+
     return (
         <ScrollView style={styles.screen}>
             <Text style={styles.title}>Balwa Car Cool</Text>
 
-            {/* Stats (still hardcoded – will be DB-driven next) */}
+            {/* Stats (DB-driven) */}
             <View style={styles.statsRow}>
                 <View style={styles.statPill}>
                     <Text style={styles.statSmallLabel}>Today</Text>
-                    <Text style={styles.statMain}>3</Text>
+                    <Text style={styles.statMain}>
+                        {loadingStats ? "--" : stats.todayBills}
+                    </Text>
                     <Text style={styles.statSub}>Bills</Text>
                 </View>
 
                 <View style={styles.statPill}>
                     <Text style={styles.statSmallLabel}>Revenue</Text>
                     <Text style={[styles.statMain, { color: "#16a34a" }]}>
-                        ₹4,500
+                        {loadingStats ? "--" : `₹${stats.todayRevenue}`}
                     </Text>
                     <Text style={styles.statSub}>Today</Text>
                 </View>
 
                 <View style={styles.statPill}>
                     <Text style={styles.statSmallLabel}>This Month</Text>
-                    <Text style={styles.statMain}>45</Text>
+                    <Text style={styles.statMain}>
+                        {loadingStats ? "--" : stats.monthBills}
+                    </Text>
                     <Text style={styles.statSub}>Bills</Text>
                 </View>
             </View>
