@@ -209,6 +209,8 @@ export default function CreateBillScreen() {
 
     const uploadUrl = `${supabaseUrl}/storage/v1/object/invoices/${invoiceNo}.pdf`;
 
+    console.log("UPLOAD URL:", uploadUrl);
+
     const upload = await FileSystem.uploadAsync(uploadUrl, uri, {
       httpMethod: "PUT",
       uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
