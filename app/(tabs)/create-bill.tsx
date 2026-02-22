@@ -135,7 +135,7 @@ export default function CreateBillScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
-  const [variants, setVariants] = useState<Variant[]>([]);
+  // const [variants, setVariants] = useState<Variant[]>([]);
 
   const [vehicleForm, setVehicleForm] = useState({
     carNumber: "",
@@ -564,7 +564,7 @@ export default function CreateBillScreen() {
                   />
 
                   {selected && (
-                    <View style={{ marginTop: 10 }}>
+                    <View style={{ marginTop: 14 }}>
                       <TextInput
                         style={styles.input}
                         placeholder="Service Charge"
@@ -589,7 +589,7 @@ export default function CreateBillScreen() {
                       />
 
                       {selected.parts.map((p, i) => (
-                        <View key={i} style={styles.partRow}>
+                        <View key={i} style={styles.partRowPremium}>
                           <Text style={styles.partText}>
                             {p.variant_name} × {p.quantity}
                           </Text>
@@ -599,13 +599,17 @@ export default function CreateBillScreen() {
                         </View>
                       ))}
 
-                      <PrimaryBtn
-                        title="+ Add Part"
+                      <Pressable
+                        style={styles.addPartPremiumBtn}
                         onPress={() => {
                           setActiveServiceId(s.id);
                           setModalVisible(true);
                         }}
-                      />
+                      >
+                        <Text style={styles.addPartPremiumText}>
+                          ＋ Add Part
+                        </Text>
+                      </Pressable>
                     </View>
                   )}
                 </View>
@@ -762,8 +766,8 @@ export default function CreateBillScreen() {
         <InventoryModal
           visible={modalVisible}
           products={products}
-          variants={variants}
-          setVariants={setVariants}
+          // variants={variants}
+          // setVariants={setVariants}
           onClose={() => setModalVisible(false)}
           onAdd={(part: PartItem) => {
             if (!activeServiceId) return;
@@ -778,6 +782,8 @@ export default function CreateBillScreen() {
                 parts: [...(prev[activeServiceId]?.parts ?? []), part],
               },
             }));
+
+            setActiveServiceId(null); // IMPORTANT
           }}
         />
       </ScrollView>
@@ -828,99 +834,182 @@ function Option({
 
 /* ================= MODAL ================= */
 
-function InventoryModal({
-  visible,
-  products,
-  variants,
-  setVariants,
-  onClose,
-  onAdd,
-}: any) {
+function InventoryModal({ visible, products, onClose, onAdd }: any) {
   const [product, setProduct] = useState<any>(null);
   const [variant, setVariant] = useState<any>(null);
+  const [variants, setVariants] = useState<any[]>([]);
+
   const [qty, setQty] = useState("1");
   const [price, setPrice] = useState("");
 
+  const handleBack = () => {
+    if (variant) {
+      setVariant(null);
+      return;
+    }
+
+    if (product) {
+      setProduct(null);
+      setVariants([]);
+      return;
+    }
+
+    onClose();
+  };
+
+  /* Reset when modal opens */
+  useEffect(() => {
+    if (visible) {
+      setProduct(null);
+      setVariant(null);
+      setVariants([]);
+      setQty("1");
+      setPrice("");
+    }
+  }, [visible]);
+
+  /* Load variants */
+  const loadVariants = async (productId: string) => {
+    const { data, error } = await supabase
+      .from("inventory_variants")
+      .select("id, variant_name, quantity")
+      .eq("product_id", productId);
+
+    if (error) {
+      Alert.alert("Failed to load variants");
+      return;
+    }
+
+    setVariants(data || []);
+  };
+
   return (
-    <Modal visible={visible} animationType="slide">
-      <View style={styles.modal}>
-        {!product &&
-          products.map((p: any) => (
-            <Option
-              key={p.id}
-              label={p.name}
-              onPress={async () => {
-                setProduct(p);
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalCard}>
+          {/* HEADER */}
+          <View style={styles.modalHeader}>
+            {/* BACK */}
+            <Pressable onPress={handleBack} style={styles.modalBackBtn}>
+              {(product || variant) && (
+                <Text style={styles.modalBackText}>‹ Back</Text>
+              )}
+            </Pressable>
 
-                const { data, error } = await supabase
-                  .from("inventory_variants")
-                  .select("id, variant_name, quantity")
-                  .eq("product_id", p.id);
+            {/* TITLE */}
+            <Text style={styles.modalTitle}>
+              {!product && "Select Product"}
+              {product && !variant && "Select Variant"}
+              {variant && "Part Details"}
+            </Text>
 
-                if (error) {
-                  Alert.alert("Failed to load variants");
-                  return;
-                }
-
-                if (data) setVariants(data);
-              }}
-            />
-          ))}
-
-        {product &&
-          !variant &&
-          variants.map((v: any) => (
-            <Option
-              key={v.id}
-              label={v.variant_name}
-              onPress={() => setVariant(v)}
-            />
-          ))}
-
-        {variant && (
-          <View>
-            <TextInput
-              style={styles.input}
-              placeholder="Quantity"
-              keyboardType="numeric"
-              value={qty}
-              onChangeText={setQty}
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Price"
-              keyboardType="numeric"
-              value={price}
-              onChangeText={setPrice}
-            />
-
-            <PrimaryBtn
-              title="Add Part"
-              onPress={() => {
-                if (Number(qty) > variant.quantity) {
-                  Alert.alert("Not enough stock available");
-                  return;
-                }
-
-                onAdd({
-                  inventory_variant_id: variant.id,
-                  variant_name: variant.variant_name,
-                  quantity: Number(qty) || 1,
-                  price_per_unit: Number(price) || 0,
-                });
-
-                setProduct(null);
-                setVariant(null);
-                setQty("1");
-                setPrice("");
-                onClose();
-              }}
-            />
+            {/* CLOSE */}
+            <Pressable onPress={onClose}>
+              <Text style={styles.modalClose}>✕</Text>
+            </Pressable>
           </View>
-        )}
 
-        <PrimaryBtn title="Close" onPress={onClose} />
+          {/* CONTENT */}
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* PRODUCT */}
+            {!product && (
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Select Product</Text>
+
+                {products.map((p: any) => (
+                  <Pressable
+                    key={p.id}
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setProduct(p);
+                      loadVariants(p.id);
+                    }}
+                  >
+                    <Text style={styles.modalItemText}>{p.name}</Text>
+
+                    <Text style={styles.modalArrow}>›</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {/* VARIANT */}
+            {product && !variant && (
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Select Variant</Text>
+
+                {variants.map((v: any) => (
+                  <Pressable
+                    key={v.id}
+                    style={styles.modalItem}
+                    onPress={() => setVariant(v)}
+                  >
+                    <View>
+                      <Text style={styles.modalItemText}>{v.variant_name}</Text>
+
+                      <Text style={styles.modalSubText}>
+                        Stock: {v.quantity}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.modalArrow}>›</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {/* FORM */}
+            {variant && (
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Part Details</Text>
+
+                <Text style={styles.modalLabel}>Quantity</Text>
+
+                <TextInput
+                  style={styles.modalInput}
+                  keyboardType="numeric"
+                  value={qty}
+                  onChangeText={setQty}
+                />
+
+                <Text style={styles.modalLabel}>Price</Text>
+
+                <TextInput
+                  style={styles.modalInput}
+                  keyboardType="numeric"
+                  value={price}
+                  onChangeText={setPrice}
+                />
+
+                <Pressable
+                  style={styles.modalAddBtn}
+                  onPress={() => {
+                    if (Number(qty) <= 0) {
+                      Alert.alert("Enter valid quantity");
+                      return;
+                    }
+
+                    if (Number(qty) > variant.quantity) {
+                      Alert.alert("Not enough stock");
+                      return;
+                    }
+
+                    onAdd({
+                      inventory_variant_id: variant.id,
+                      variant_name: variant.variant_name,
+                      quantity: Number(qty),
+                      price_per_unit: Number(price) || 0,
+                    });
+
+                    onClose();
+                  }}
+                >
+                  <Text style={styles.modalAddText}>Add Part</Text>
+                </Pressable>
+              </View>
+            )}
+          </ScrollView>
+        </View>
       </View>
     </Modal>
   );
@@ -1153,5 +1242,143 @@ const styles = StyleSheet.create({
 
   fetchIcon: {
     fontSize: 16,
+  },
+
+  /* ===== MODAL PREMIUM UI ===== */
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    padding: 16,
+  },
+
+  modalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 16,
+    maxHeight: "90%",
+  },
+
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+    paddingBottom: 10,
+    marginBottom: 12,
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: "Poppins-SemiBold",
+    color: COLORS.text,
+  },
+
+  modalClose: {
+    fontSize: 20,
+    color: COLORS.muted,
+  },
+
+  modalSection: {
+    marginBottom: 20,
+  },
+
+  modalSectionTitle: {
+    fontSize: 14,
+    fontFamily: "Poppins-SemiBold",
+    marginBottom: 10,
+  },
+
+  modalItem: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  modalItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+
+  modalSubText: {
+    fontSize: 11,
+    color: COLORS.muted,
+    marginTop: 2,
+  },
+
+  modalArrow: {
+    fontSize: 18,
+    color: COLORS.gray,
+  },
+
+  modalLabel: {
+    fontSize: 12,
+    color: COLORS.muted,
+    marginBottom: 4,
+  },
+
+  modalInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    backgroundColor: "#f9fafb",
+  },
+
+  modalAddBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 10,
+  },
+
+  modalAddText: {
+    color: "#fff",
+    fontFamily: "Poppins-SemiBold",
+  },
+
+  /* ===== STEP 3 POLISH ===== */
+
+  addPartPremiumBtn: {
+    backgroundColor: "#eff6ff", // soft blue
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 10,
+  },
+
+  addPartPremiumText: {
+    color: COLORS.primary,
+    fontFamily: "Poppins-SemiBold",
+    fontSize: 13,
+  },
+
+  partRowPremium: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#f8fafc",
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+
+  modalBackBtn: {
+    minWidth: 60,
+  },
+
+  modalBackText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontFamily: "Poppins-SemiBold",
   },
 });
