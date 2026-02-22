@@ -1,6 +1,10 @@
+// InventoryScreen.tsx
+
 import { supabase } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -10,11 +14,37 @@ import {
   View,
 } from "react-native";
 
+/* ------------------------------------------------------------------ */
+/* THEME */
+/* ------------------------------------------------------------------ */
+
+const COLORS = {
+  primary: "#2563eb",
+  success: "#16a34a",
+  warning: "#f59e0b",
+  danger: "#ef4444",
+
+  bg: "#f8fafc",
+  card: "#ffffff",
+
+  text: "#0f172a",
+  muted: "#64748b",
+  border: "#e5e7eb",
+};
+
+/* ------------------------------------------------------------------ */
+/* SCREEN */
+/* ------------------------------------------------------------------ */
+
 export default function InventoryScreen() {
   const [items, setItems] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   const [showModal, setShowModal] = useState(false);
+
   const [productId, setProductId] = useState("");
   const [variantName, setVariantName] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -22,145 +52,322 @@ export default function InventoryScreen() {
   const [editItem, setEditItem] = useState<any>(null);
   const [editQty, setEditQty] = useState("");
 
-  /* ---------- FETCH INVENTORY ---------- */
-  const fetchInventory = async () => {
-    const { data } = await supabase.from("inventory_variants").select(`
-      id,
-      variant_name,
-      quantity,
-      inventory_products!inventory_variants_product_id_fkey (
-        name
-      )
-    `);
+  /* ------------------------------------------------------------------ */
+  /* FETCH INVENTORY */
+  /* ------------------------------------------------------------------ */
 
-    if (data) setItems(data);
-  };
+  const fetchInventory = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.from("inventory_variants").select(
+        `
+          id,
+          variant_name,
+          quantity,
+          inventory_products!inventory_variants_product_id_fkey (
+            name
+          )
+        `,
+      );
 
-  /* ---------- FETCH PRODUCTS ---------- */
-  const fetchProducts = async () => {
-    const { data } = await supabase
-      .from("inventory_products")
-      .select("id, name");
+      if (error) throw error;
 
-    if (data) setProducts(data);
-  };
-
-  useEffect(() => {
-    fetchInventory();
-    fetchProducts();
+      setItems(data || []);
+    } catch (error) {
+      console.error("Inventory fetch error:", error);
+      Alert.alert("Error", "Failed to load inventory");
+    }
   }, []);
 
-  /* ---------- GROUP INVENTORY ---------- */
-  const groupedItems = items.reduce((acc: any, item: any) => {
-    const productName = item.inventory_products?.name;
-    if (!productName) return acc;
+  /* ------------------------------------------------------------------ */
+  /* FETCH PRODUCTS */
+  /* ------------------------------------------------------------------ */
 
-    if (!acc[productName]) acc[productName] = [];
-    acc[productName].push(item);
+  const fetchProducts = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("inventory_products")
+        .select("id, name");
+
+      if (error) throw error;
+
+      setProducts(data || []);
+    } catch (error) {
+      console.error("Product fetch error:", error);
+      Alert.alert("Error", "Failed to load products");
+    }
+  }, []);
+
+  /* ------------------------------------------------------------------ */
+  /* LOAD ALL DATA */
+  /* ------------------------------------------------------------------ */
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+
+    await Promise.all([fetchInventory(), fetchProducts()]);
+
+    setLoading(false);
+  }, [fetchInventory, fetchProducts]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  /* ------------------------------------------------------------------ */
+  /* GROUP INVENTORY */
+  /* ------------------------------------------------------------------ */
+
+  const groupedItems = items.reduce((acc: any, item: any) => {
+    const name = item.inventory_products?.name;
+
+    if (!name) return acc;
+
+    if (!acc[name]) acc[name] = [];
+
+    acc[name].push(item);
+
     return acc;
   }, {});
 
-  /* ---------- ADD ITEM ---------- */
+  /* ------------------------------------------------------------------ */
+  /* HELPERS */
+  /* ------------------------------------------------------------------ */
+
+  const getStockColor = (qty: number) => {
+    if (qty < 5) return COLORS.danger;
+    if (qty < 10) return COLORS.warning;
+
+    return COLORS.success;
+  };
+
+  const isValidNumber = (val: string) => {
+    return !isNaN(Number(val)) && Number(val) >= 0;
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* ADD ITEM */
+  /* ------------------------------------------------------------------ */
+
   const saveItem = async () => {
-    if (!productId || !variantName || !quantity) return;
+    if (!productId || !variantName || !quantity) {
+      Alert.alert("Missing Fields", "Fill all fields");
+      return;
+    }
 
-    await supabase.from("inventory_variants").insert({
-      product_id: productId,
-      variant_name: variantName,
-      quantity: Number(quantity),
-    });
+    if (!isValidNumber(quantity)) {
+      Alert.alert("Invalid Quantity", "Enter valid number");
+      return;
+    }
 
-    setShowModal(false);
-    setVariantName("");
-    setQuantity("");
-    setProductId("");
+    try {
+      setSaving(true);
 
-    fetchInventory();
+      const { error } = await supabase.from("inventory_variants").insert({
+        product_id: productId,
+        variant_name: variantName.trim(),
+        quantity: Number(quantity),
+      });
+
+      if (error) throw error;
+
+      setShowModal(false);
+
+      setProductId("");
+      setVariantName("");
+      setQuantity("");
+
+      fetchInventory();
+    } catch (error) {
+      console.error("Save error:", error);
+      Alert.alert("Error", "Failed to save item");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  /* ---------- UPDATE STOCK ---------- */
+  /* ------------------------------------------------------------------ */
+  /* UPDATE */
+  /* ------------------------------------------------------------------ */
+
   const updateStock = async () => {
-    if (!editItem) return;
+    if (!editItem || !isValidNumber(editQty)) {
+      Alert.alert("Invalid Input", "Enter valid quantity");
+      return;
+    }
 
-    await supabase
-      .from("inventory_variants")
-      .update({ quantity: Number(editQty) })
-      .eq("id", editItem.id);
+    try {
+      setSaving(true);
 
-    setEditItem(null);
-    fetchInventory();
+      const { error } = await supabase
+        .from("inventory_variants")
+        .update({ quantity: Number(editQty) })
+        .eq("id", editItem.id);
+
+      if (error) throw error;
+
+      setEditItem(null);
+
+      fetchInventory();
+    } catch (error) {
+      console.error("Update error:", error);
+      Alert.alert("Error", "Update failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  /* ---------- DELETE STOCK ---------- */
-  const deleteStock = async () => {
-    if (!editItem) return;
+  /* ------------------------------------------------------------------ */
+  /* DELETE */
+  /* ------------------------------------------------------------------ */
 
-    await supabase.from("inventory_variants").delete().eq("id", editItem.id);
+  const deleteStock = () => {
+    Alert.alert("Delete Variant", "Are you sure?", [
+      { text: "Cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setSaving(true);
 
-    setEditItem(null);
-    fetchInventory();
+            const { error } = await supabase
+              .from("inventory_variants")
+              .delete()
+              .eq("id", editItem.id);
+
+            if (error) throw error;
+
+            setEditItem(null);
+
+            fetchInventory();
+          } catch (error) {
+            console.error("Delete error:", error);
+            Alert.alert("Error", "Delete failed");
+          } finally {
+            setSaving(false);
+          }
+        },
+      },
+    ]);
   };
+
+  /* ------------------------------------------------------------------ */
+  /* LOADING */
+  /* ------------------------------------------------------------------ */
+
+  if (loading) {
+    return (
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loaderText}>Loading inventory...</Text>
+      </View>
+    );
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* UI */
+  /* ------------------------------------------------------------------ */
 
   return (
-    <ScrollView style={styles.screen}>
-      {/* Header */}
-      <View style={styles.topBar}>
-        <Text style={styles.title}>Inventory</Text>
+    <ScrollView
+      style={styles.screen}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 60 }}
+    >
+      {/* HEADER */}
+
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>Inventory</Text>
+          <Text style={styles.subtitle}>Live stock overview</Text>
+        </View>
+
         <Pressable style={styles.addBtn} onPress={() => setShowModal(true)}>
-          <Text style={styles.addText}>+ Add Item</Text>
+          <Text style={styles.addText}>+ Add</Text>
         </Pressable>
       </View>
 
-      {/* Inventory List */}
+      {/* LIST */}
+
       <View style={styles.list}>
-        {Object.keys(groupedItems).map((productName) => (
-          <View key={productName} style={{ marginBottom: 20 }}>
-            <Text style={styles.productTitle}>{productName}</Text>
+        {Object.keys(groupedItems).length === 0 && (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyTitle}>No inventory found</Text>
+            <Text style={styles.emptySub}>Start by adding products</Text>
+          </View>
+        )}
 
-            {groupedItems[productName].map((item: any) => (
-              <View key={item.id} style={styles.card}>
-                <View>
-                  <Text style={styles.name}>{item.variant_name}</Text>
-                  <Text style={styles.qty}>Stock: {item.quantity}</Text>
+        {Object.keys(groupedItems).map((product) => (
+          <View key={product} style={styles.productCard}>
+            <View style={styles.productHeader}>
+              <Text style={styles.productTitle}>{product}</Text>
+
+              <Text style={styles.productCount}>
+                {groupedItems[product].length} variants
+              </Text>
+            </View>
+
+            {groupedItems[product].map((item: any) => {
+              const color = getStockColor(item.quantity);
+
+              return (
+                <View key={item.id} style={styles.variantRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.variantName}>{item.variant_name}</Text>
+
+                    <View style={styles.stockRow}>
+                      <View
+                        style={[styles.stockDot, { backgroundColor: color }]}
+                      />
+
+                      <Text style={styles.stockText}>{item.quantity} pcs</Text>
+                    </View>
+                  </View>
+
+                  <Pressable
+                    style={styles.editBtn}
+                    onPress={() => {
+                      setEditItem(item);
+                      setEditQty(String(item.quantity));
+                    }}
+                  >
+                    <Text style={styles.editText}>Edit</Text>
+                  </Pressable>
                 </View>
-
-                <Pressable
-                  style={styles.updateBtn}
-                  onPress={() => {
-                    setEditItem(item);
-                    setEditQty(String(item.quantity));
-                  }}
-                >
-                  <Text style={styles.updateText}>Update</Text>
-                </Pressable>
-              </View>
-            ))}
+              );
+            })}
           </View>
         ))}
       </View>
 
-      {/* ADD ITEM MODAL */}
+      {/* ADD MODAL */}
+
       <Modal visible={showModal} transparent animationType="slide">
-        <View style={styles.modalBg}>
-          <View style={styles.modalCard}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Add Inventory</Text>
 
-            <Text style={styles.label}>Select Product</Text>
-            {products.map((p) => (
-              <Pressable key={p.id} onPress={() => setProductId(p.id)}>
-                <Text
-                  style={[
-                    styles.productOption,
-                    productId === p.id && styles.selected,
-                  ]}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {products.map((p) => (
+                <Pressable
+                  key={p.id}
+                  onPress={() => setProductId(p.id)}
+                  style={[styles.pill, productId === p.id && styles.pillActive]}
                 >
-                  {p.name}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text
+                    style={[
+                      styles.pillText,
+                      productId === p.id && styles.pillTextActive,
+                    ]}
+                  >
+                    {p.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
 
             <TextInput
-              placeholder="Variant (eg: 6mm, PAG 46)"
+              placeholder="Variant name"
               value={variantName}
               onChangeText={setVariantName}
               style={styles.input}
@@ -174,8 +381,16 @@ export default function InventoryScreen() {
               style={styles.input}
             />
 
-            <Pressable style={styles.addBtn} onPress={saveItem}>
-              <Text style={styles.addText}>Save</Text>
+            <Pressable
+              style={styles.primaryBtn}
+              onPress={saveItem}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryText}>Save</Text>
+              )}
             </Pressable>
 
             <Pressable onPress={() => setShowModal(false)}>
@@ -185,14 +400,15 @@ export default function InventoryScreen() {
         </View>
       </Modal>
 
-      {/* UPDATE / DELETE MODAL */}
+      {/* EDIT MODAL */}
+
       <Modal visible={!!editItem} transparent animationType="slide">
-        <View style={styles.modalBg}>
-          <View style={styles.modalCard}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Update Stock</Text>
 
-            <Text style={{ marginBottom: 6 }}>
-              {editItem?.inventory_products?.name} – {editItem?.variant_name}
+            <Text style={styles.editLabel}>
+              {editItem?.inventory_products?.name} • {editItem?.variant_name}
             </Text>
 
             <TextInput
@@ -202,14 +418,20 @@ export default function InventoryScreen() {
               style={styles.input}
             />
 
-            <Pressable style={styles.addBtn} onPress={updateStock}>
-              <Text style={styles.addText}>Update</Text>
+            <Pressable
+              style={styles.primaryBtn}
+              onPress={updateStock}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryText}>Update</Text>
+              )}
             </Pressable>
 
-            <Pressable style={{ marginTop: 10 }} onPress={deleteStock}>
-              <Text style={{ color: "#ef4444", textAlign: "center" }}>
-                Delete Variant
-              </Text>
+            <Pressable style={styles.deleteBtn} onPress={deleteStock}>
+              <Text style={styles.deleteText}>Delete Variant</Text>
             </Pressable>
 
             <Pressable onPress={() => setEditItem(null)}>
@@ -222,92 +444,249 @@ export default function InventoryScreen() {
   );
 }
 
-/* ---------------- STYLES ---------------- */
+/* ------------------------------------------------------------------ */
+/* STYLES */
+/* ------------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#f1f5f9" },
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+    paddingHorizontal: 16,
+  },
 
-  topBar: {
-    padding: 16,
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.bg,
+  },
+
+  loaderText: {
+    marginTop: 10,
+    color: COLORS.muted,
+    fontFamily: "Poppins-Regular",
+  },
+
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingTop: 24,
+    marginBottom: 16,
   },
 
-  title: { fontSize: 20, fontWeight: "700" },
+  title: {
+    fontSize: 26,
+    fontFamily: "Poppins-Bold",
+    color: COLORS.text,
+  },
+
+  subtitle: {
+    fontSize: 13,
+    fontFamily: "Poppins-Regular",
+    color: COLORS.muted,
+    marginTop: 2,
+  },
 
   addBtn: {
-    backgroundColor: "#2563eb",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 16,
   },
 
-  addText: { color: "#fff", fontWeight: "600" },
+  addText: {
+    color: "#fff",
+    fontFamily: "Poppins-SemiBold",
+  },
 
-  list: { padding: 16 },
+  list: {
+    marginTop: 6,
+  },
+
+  productCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 16,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+
+  productHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
 
   productTitle: {
+    fontSize: 16,
+    fontFamily: "Poppins-SemiBold",
+    color: COLORS.text,
+  },
+
+  productCount: {
+    fontSize: 12,
+    fontFamily: "Poppins-Regular",
+    color: COLORS.muted,
+  },
+
+  variantRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderColor: COLORS.border,
+  },
+
+  variantName: {
+    fontSize: 14,
+    fontFamily: "Poppins-Medium",
+    color: COLORS.text,
+  },
+
+  stockRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+  },
+
+  stockDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
+  stockText: {
+    fontSize: 12,
+    fontFamily: "Poppins-Regular",
+    color: COLORS.muted,
+  },
+
+  editBtn: {
+    backgroundColor: "#eff6ff",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+
+  editText: {
+    color: COLORS.primary,
+    fontFamily: "Poppins-SemiBold",
+    fontSize: 13,
+  },
+
+  emptyBox: {
+    alignItems: "center",
+    paddingVertical: 70,
+  },
+
+  emptyTitle: {
+    fontSize: 16,
+    fontFamily: "Poppins-SemiBold",
+    color: COLORS.text,
+  },
+
+  emptySub: {
+    fontSize: 13,
+    fontFamily: "Poppins-Regular",
+    color: COLORS.muted,
+    marginTop: 4,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+
+  modalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    padding: 20,
+  },
+
+  modalTitle: {
     fontSize: 18,
-    fontWeight: "700",
+    fontFamily: "Poppins-Bold",
+    marginBottom: 12,
+  },
+
+  editLabel: {
+    fontSize: 13,
+    fontFamily: "Poppins-Regular",
+    color: COLORS.muted,
     marginBottom: 8,
   },
 
-  card: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 12,
+    fontFamily: "Poppins-Regular",
+  },
+
+  pill: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginRight: 8,
     marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
+  },
+
+  pillActive: {
+    backgroundColor: "#eff6ff",
+    borderColor: COLORS.primary,
+  },
+
+  pillText: {
+    fontSize: 13,
+    fontFamily: "Poppins-Regular",
+    color: "#334155",
+  },
+
+  pillTextActive: {
+    color: COLORS.primary,
+    fontFamily: "Poppins-SemiBold",
+  },
+
+  primaryBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 6,
     alignItems: "center",
   },
 
-  name: { fontSize: 16, fontWeight: "600" },
-
-  qty: { fontSize: 13, color: "#64748b" },
-
-  updateBtn: {
-    backgroundColor: "#e0f2fe",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+  primaryText: {
+    color: "#fff",
+    fontFamily: "Poppins-SemiBold",
   },
 
-  updateText: { color: "#2563eb", fontWeight: "600" },
-
-  modalBg: {
-    flex: 1,
-    backgroundColor: "#00000066",
-    justifyContent: "center",
-  },
-
-  modalCard: {
-    backgroundColor: "#fff",
-    margin: 20,
-    padding: 20,
-    borderRadius: 12,
-  },
-
-  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 10 },
-
-  label: { marginTop: 8, fontWeight: "600" },
-
-  productOption: { padding: 6 },
-
-  selected: { color: "#2563eb", fontWeight: "700" },
-
-  input: {
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    padding: 10,
-    borderRadius: 8,
+  deleteBtn: {
     marginTop: 10,
+  },
+
+  deleteText: {
+    color: COLORS.danger,
+    textAlign: "center",
+    fontFamily: "Poppins-Medium",
   },
 
   cancel: {
     textAlign: "center",
-    marginTop: 10,
-    color: "#ef4444",
+    marginTop: 12,
+    color: COLORS.muted,
+    fontFamily: "Poppins-Regular",
   },
 });

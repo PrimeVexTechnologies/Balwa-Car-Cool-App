@@ -1,281 +1,458 @@
+// DashboardScreen.tsx
+
+import { supabase } from "@/lib/supabase";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { useCallback } from "react";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Alert,
+  BackHandler,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+
+/* ------------------------------------------------------------------ */
+/* THEME */
+/* ------------------------------------------------------------------ */
+
+const COLORS = {
+  primary: "#2563eb",
+  success: "#16a34a",
+
+  bg: "#f8fafc",
+  card: "#ffffff",
+
+  text: "#0f172a",
+  muted: "#64748b",
+  gray: "#94a3b8",
+  border: "#e5e7eb",
+
+  danger: "#ef4444",
+};
+
+/* ------------------------------------------------------------------ */
+/* ROUTES */
+/* ------------------------------------------------------------------ */
 
 const ROUTES = {
-    CREATE_BILL: "/create-bill",
-    SERVICE_HISTORY: "/service-history",
-    LOGIN: "/login",
-    INVENTORY: "/inventory",
-    TOTAL_BILLS: "/total-bills",
+  CREATE_BILL: "/create-bill",
+  SERVICE_HISTORY: "/service-history",
+  INVENTORY: "/inventory",
+  TOTAL_BILLS: "/total-bills",
 } as const;
 
-const dashboardCards = [
-    {
-        title: "Create New Bill",
-        description: "Generate a new service invoice",
-        icon: "plus-circle",
-        route: ROUTES.CREATE_BILL,
-        color: "#2563eb",
-        disabled: false,
-    },
-    {
-        title: "Service History",
-        description: "View past bills and invoices",
-        icon: "folder",
-        route: ROUTES.SERVICE_HISTORY,
-        color: "#16a34a",
-        disabled: false,
-    },
-    {
-        title: "Inventory",
-        description: "Manage garage inventory",
-        icon: "box",
-        color: "#401c0a",
-        route: ROUTES.INVENTORY,
-        disabled: false,
-    },
-    {
-        title: "Total Bills",
-        description: "View billing statistics",
-        icon: "file-text",
-        color: "#dbd058",
-        route: ROUTES.TOTAL_BILLS,
-        disabled: false,
-    },
-] as const;
+type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
+
+/* ------------------------------------------------------------------ */
+/* DASHBOARD CARDS */
+/* ------------------------------------------------------------------ */
+
+const dashboardCards: {
+  title: string;
+  description: string;
+  icon: any;
+  route: AppRoute;
+  color: string;
+}[] = [
+  {
+    title: "Create New Bill",
+    description: "Generate service invoice",
+    icon: "plus-circle",
+    route: ROUTES.CREATE_BILL,
+    color: COLORS.primary,
+  },
+  {
+    title: "Service History",
+    description: "View past records",
+    icon: "folder",
+    route: ROUTES.SERVICE_HISTORY,
+    color: COLORS.success,
+  },
+  {
+    title: "Inventory",
+    description: "Manage stock",
+    icon: "box",
+    route: ROUTES.INVENTORY,
+    color: "#7c2d12",
+  },
+  {
+    title: "Total Bills",
+    description: "Billing analytics",
+    icon: "file-text",
+    route: ROUTES.TOTAL_BILLS,
+    color: "#ca8a04",
+  },
+];
+
+/* ------------------------------------------------------------------ */
+/* SCREEN */
+/* ------------------------------------------------------------------ */
 
 export default function DashboardScreen() {
-    const router = useRouter();
-    const [loadingStats, setLoadingStats] = useState(true);
+  const router = useRouter();
 
-    const [stats, setStats] = useState({
-        todayBills: 0,
-        todayRevenue: 0,
-        monthBills: 0,
-    });
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
 
-    useEffect(() => {
-        const loadStats = async () => {
-            const { data, error } = await supabase.rpc("get_dashboard_stats");
+  const [stats, setStats] = useState({
+    todayBills: 0,
+    todayRevenue: 0,
+    monthBills: 0,
+  });
 
-            if (!error && data) {
-                setStats({
-                    todayBills: data.today_bill_count,
-                    todayRevenue: data.today_revenue,
-                    monthBills: data.month_bill_count,
-                });
-            }
-        };
+  /* ------------------------------------------------------------------ */
+  /* LOAD STATS */
+  /* ------------------------------------------------------------------ */
 
-        loadStats();
-    }, []);
+  const loadStats = async (isRefresh = false) => {
+    try {
+      setError("");
 
-    useFocusEffect(
-        useCallback(() => {
-            const onBackPress = () => true;
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
 
-            const subscription = BackHandler.addEventListener(
-                "hardwareBackPress",
-                onBackPress
-            );
+      const { data, error } = await supabase.rpc("get_dashboard_stats");
 
-            return () => subscription.remove();
-        }, [])
-    );
+      if (error) throw error;
 
-    useEffect(() => {
-        const loadStats = async () => {
-            setLoadingStats(true);
+      if (data) {
+        setStats({
+          todayBills: data.today_bill_count ?? 0,
+          todayRevenue: data.today_revenue ?? 0,
+          monthBills: data.month_bill_count ?? 0,
+        });
+      }
+    } catch (err) {
+      console.log("Dashboard error:", err);
 
-            const { data, error } = await supabase.rpc("get_dashboard_stats");
+      setError("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
-            if (!error && data) {
-                setStats({
-                    todayBills: data.today_bill_count,
-                    todayRevenue: data.today_revenue,
-                    monthBills: data.month_bill_count,
-                });
-            }
+  useEffect(() => {
+    loadStats();
+  }, []);
 
-            setLoadingStats(false);
-        };
+  /* ------------------------------------------------------------------ */
+  /* DISABLE BACK */
+  /* ------------------------------------------------------------------ */
 
-        loadStats();
-    }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => true;
 
+      const sub = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress,
+      );
 
-    return (
-        <ScrollView style={styles.screen}>
-            <Text style={styles.title}>Balwa Car Cool</Text>
+      return () => sub.remove();
+    }, []),
+  );
 
-            {/* Stats (DB-driven) */}
-            <View style={styles.statsRow}>
-                <View style={styles.statPill}>
-                    <Text style={styles.statSmallLabel}>Today</Text>
-                    <Text style={styles.statMain}>
-                        {loadingStats ? "--" : stats.todayBills}
-                    </Text>
-                    <Text style={styles.statSub}>Bills</Text>
-                </View>
+  /* ------------------------------------------------------------------ */
+  /* NAVIGATION */
+  /* ------------------------------------------------------------------ */
 
-                <View style={styles.statPill}>
-                    <Text style={styles.statSmallLabel}>Revenue</Text>
-                    <Text style={[styles.statMain, { color: "#16a34a" }]}>
-                        {loadingStats ? "--" : `₹${stats.todayRevenue}`}
-                    </Text>
-                    <Text style={styles.statSub}>Today</Text>
-                </View>
+  const navigateTo = (route: AppRoute) => {
+    try {
+      router.push(route);
+    } catch {
+      Alert.alert("Navigation failed");
+    }
+  };
 
-                <View style={styles.statPill}>
-                    <Text style={styles.statSmallLabel}>This Month</Text>
-                    <Text style={styles.statMain}>
-                        {loadingStats ? "--" : stats.monthBills}
-                    </Text>
-                    <Text style={styles.statSub}>Bills</Text>
-                </View>
+  /* ------------------------------------------------------------------ */
+  /* UI */
+  /* ------------------------------------------------------------------ */
+
+  return (
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => loadStats(true)}
+          tintColor={COLORS.primary}
+        />
+      }
+    >
+      {/* ================= HEADER ================= */}
+
+      <View style={styles.header}>
+        <Text style={styles.title}>Balwa Car Cool</Text>
+
+        <Text style={styles.subtitle}>Dashboard Overview</Text>
+      </View>
+
+      {/* ================= ERROR ================= */}
+
+      {error !== "" && (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
+
+          <Pressable onPress={() => loadStats()} style={styles.retryBtn}>
+            <Text style={styles.retryText}>Retry</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* ================= STATS ================= */}
+
+      <View style={styles.statsRow}>
+        <StatCard
+          label="Today"
+          value={loading ? "--" : stats.todayBills}
+          suffix="Bills"
+        />
+
+        <StatCard
+          label="Revenue"
+          value={
+            loading
+              ? "..."
+              : stats.todayRevenue === 0
+                ? "No Sales"
+                : `₹${stats.todayRevenue}`
+          }
+          suffix="Today"
+          highlight
+        />
+
+        <StatCard
+          label="Month"
+          value={loading ? "--" : stats.monthBills}
+          suffix="Bills"
+        />
+      </View>
+
+      {/* ================= CARDS ================= */}
+
+      <View style={styles.container}>
+        {dashboardCards.map((card) => (
+          <Pressable
+            key={card.title}
+            onPress={() => navigateTo(card.route)}
+            style={({ pressed }) => [
+              styles.card,
+              pressed && styles.cardPressed,
+            ]}
+          >
+            <View style={[styles.cardIcon, { backgroundColor: card.color }]}>
+              <Feather name={card.icon} size={26} color="#fff" />
             </View>
 
-            <View style={styles.container}>
-                {/* Action Cards */}
-                <View style={styles.cards}>
-                    {dashboardCards.map((card) => (
-                        <Pressable
-                            key={card.title}
-                            disabled={card.disabled}
-                            onPress={() => {
-                                if (!card.disabled && "route" in card) {
-                                    router.push(card.route);
-                                }
-                            }}
-                            style={[styles.card, card.disabled && { opacity: 0.5 }]}
-                        >
-                            <View
-                                style={[
-                                    styles.cardIcon,
-                                    { backgroundColor: card.color },
-                                ]}
-                            >
-                                <Feather
-                                    name={card.icon as any}
-                                    size={26}
-                                    color="#ffffff"
-                                />
-                            </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitle}>{card.title}</Text>
 
-                            <Text style={styles.cardTitle}>{card.title}</Text>
-                            <Text style={styles.cardText}>{card.description}</Text>
-
-                            {card.disabled && (
-                                <Text style={styles.comingSoon}>Coming Soon</Text>
-                            )}
-                        </Pressable>
-                    ))}
-                </View>
+              <Text style={styles.cardText}>{card.description}</Text>
             </View>
-        </ScrollView>
-    );
+
+            <Feather name="chevron-right" size={22} color={COLORS.gray} />
+          </Pressable>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* STAT CARD */
+/* ------------------------------------------------------------------ */
+
+function StatCard({
+  label,
+  value,
+  suffix,
+  highlight,
+}: {
+  label: string;
+  value: string | number;
+  suffix: string;
+  highlight?: boolean;
+}) {
+  return (
+    <View style={styles.statPill}>
+      <Text style={styles.statSmallLabel}>{label}</Text>
+
+      <Text style={[styles.statMain, highlight && styles.revenue]}>
+        {value}
+      </Text>
+
+      <Text style={styles.statSub}>{suffix}</Text>
+    </View>
+  );
 }
 
 /* ------------------------------------------------------------------ */
 /* STYLES */
 /* ------------------------------------------------------------------ */
+
 const styles = StyleSheet.create({
-    screen: {
-        flex: 1,
-        backgroundColor: "#f1f5f9",
-    },
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.bg,
+  },
 
-    container: {
-        padding: 16,
-    },
+  scrollContent: {
+    paddingBottom: 40,
+  },
 
-    cards: {
-        gap: 16,
-    },
+  /* Header */
 
-    title: {
-        fontSize: 28,
-        fontWeight: "700",
-        color: "#0f172a",
-        marginTop: 24,
-        marginHorizontal: 16,
-    },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    marginBottom: 8,
+  },
 
-    card: {
-        backgroundColor: "#ffffff",
-        borderRadius: 14,
-        padding: 20,
-        shadowColor: "#000",
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 3,
-    },
+  title: {
+    fontSize: 28,
+    fontFamily: "Poppins-Bold",
+    color: COLORS.text,
+  },
 
-    cardIcon: {
-        width: 56,
-        height: 56,
-        borderRadius: 14,
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 12,
-    },
+  subtitle: {
+    fontSize: 13,
+    fontFamily: "Poppins-Regular",
+    color: COLORS.muted,
+    marginTop: 2,
+  },
 
-    cardTitle: {
-        fontSize: 17,
-        fontWeight: "600",
-        color: "#0f172a",
-        marginBottom: 4,
-    },
+  /* Error */
 
-    cardText: {
-        fontSize: 14,
-        color: "#64748b",
-    },
+  errorBox: {
+    backgroundColor: "#fee2e2",
+    marginHorizontal: 16,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
 
-    comingSoon: {
-        marginTop: 10,
-        fontSize: 12,
-        color: "#64748b",
-    },
+  errorText: {
+    color: "#b91c1c",
+    fontSize: 13,
+    fontFamily: "Poppins-Medium",
+  },
 
-    statsRow: {
-        flexDirection: "row",
-        gap: 12,
-        paddingHorizontal: 16,
-        marginTop: 16,
-    },
+  retryBtn: {
+    marginTop: 6,
+    alignSelf: "flex-start",
+  },
 
-    statPill: {
-        flex: 1,
-        backgroundColor: "#ffffff",
-        borderRadius: 14,
-        paddingVertical: 14,
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
-    },
+  retryText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontFamily: "Poppins-SemiBold",
+  },
 
-    statSmallLabel: {
-        fontSize: 12,
-        color: "#64748b",
-    },
+  /* Stats */
 
-    statMain: {
-        fontSize: 22,
-        fontWeight: "700",
-        color: "#0f172a",
-        marginVertical: 2,
-    },
+  statsRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 16,
+    marginTop: 12,
+  },
 
-    statSub: {
-        fontSize: 11,
-        color: "#94a3b8",
-    },
+  statPill: {
+    flex: 1,
+    backgroundColor: COLORS.card,
+    borderRadius: 18,
+    paddingVertical: 16,
+    alignItems: "center",
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+
+  statSmallLabel: {
+    fontSize: 12,
+    fontFamily: "Poppins-Medium",
+    color: COLORS.muted,
+  },
+
+  statMain: {
+    fontSize: 22,
+    fontFamily: "Poppins-Bold",
+    color: COLORS.text,
+    marginVertical: 3,
+  },
+
+  revenue: {
+    color: COLORS.success,
+  },
+
+  statSub: {
+    fontSize: 11,
+    fontFamily: "Poppins-Regular",
+    color: COLORS.gray,
+  },
+
+  /* Cards */
+
+  container: {
+    padding: 16,
+    gap: 14,
+    marginTop: 10,
+  },
+
+  card: {
+    backgroundColor: COLORS.card,
+    borderRadius: 18,
+    padding: 18,
+
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+
+  cardPressed: {
+    transform: [{ scale: 0.97 }],
+    opacity: 0.9,
+  },
+
+  cardIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  cardContent: {
+    flex: 1,
+  },
+
+  cardTitle: {
+    fontSize: 16,
+    fontFamily: "Poppins-SemiBold",
+    color: COLORS.text,
+  },
+
+  cardText: {
+    fontSize: 13,
+    fontFamily: "Poppins-Regular",
+    color: COLORS.muted,
+    marginTop: 2,
+  },
 });
