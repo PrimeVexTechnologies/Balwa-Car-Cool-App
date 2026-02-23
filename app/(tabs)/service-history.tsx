@@ -1,8 +1,11 @@
 import { supabase } from "@/lib/supabase";
 import { Feather } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system";
+import * as MediaLibrary from "expo-media-library";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -50,6 +53,7 @@ export default function ServiceHistoryScreen() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   /* ------------------------------------------------------------------ */
   /* FETCH BILLS */
@@ -118,6 +122,66 @@ export default function ServiceHistoryScreen() {
       setError("Failed to load service history");
     } finally {
       setLoading(false);
+    }
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* DOWNLOAD PDF */
+  /* ------------------------------------------------------------------ */
+
+  const downloadInvoice = async () => {
+    if (!selectedBill || downloading) return;
+
+    try {
+      setDownloading(true);
+
+      const { data, error } = await supabase
+        .from("bill_files")
+        .select("pdf_url")
+        .eq("bill_id", selectedBill.id)
+        .single();
+
+      if (error) throw new Error("Could not fetch invoice file");
+
+      if (!data?.pdf_url) throw new Error("Invoice PDF not found");
+
+      const perm = await MediaLibrary.requestPermissionsAsync();
+
+      if (!perm.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Allow storage permission to download invoice.",
+        );
+        return;
+      }
+
+      const baseDir =
+        (FileSystem as any).documentDirectory ||
+        (FileSystem as any).cacheDirectory;
+
+      if (!baseDir) throw new Error("Storage path not available");
+
+      const fileUri = baseDir + `invoice_${selectedBill.invoice_no}.pdf`;
+
+      const download = await FileSystem.downloadAsync(data.pdf_url, fileUri);
+
+      await MediaLibrary.createAssetAsync(download.uri);
+
+      Alert.alert("Success", "Invoice saved in Downloads");
+    } catch (err: any) {
+      console.log("Download Error:", err);
+
+      let message = "Failed to download invoice";
+
+      if (err?.message?.toLowerCase().includes("permission")) {
+        message = "Storage permission denied";
+      } else if (err?.message?.toLowerCase().includes("network")) {
+        message = "Check your internet connection";
+      }
+
+      Alert.alert("Download Failed", message);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -276,7 +340,6 @@ export default function ServiceHistoryScreen() {
                 {selectedBill.services.map((s, i) => (
                   <View key={i} style={styles.serviceRow}>
                     <Text style={styles.serviceName}>{s.name}</Text>
-
                     <Text style={styles.servicePrice}>₹{s.price}</Text>
                   </View>
                 ))}
@@ -293,13 +356,39 @@ export default function ServiceHistoryScreen() {
                 </Text>
               </View>
 
-              {/* Close */}
-              <Pressable
-                style={styles.closeBtn}
-                onPress={() => setSelectedBill(null)}
-              >
-                <Text style={styles.closeText}>Close</Text>
-              </Pressable>
+              {/* Buttons */}
+              <View style={styles.btnRow}>
+                <Pressable
+                  style={[
+                    styles.downloadBtn,
+                    downloading && styles.btnDisabled,
+                  ]}
+                  onPress={downloadInvoice}
+                  disabled={downloading}
+                >
+                  {downloading ? (
+                    <View style={styles.btnContent}>
+                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={styles.btnText}>Downloading...</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.btnContent}>
+                      <Feather name="download" size={16} color="#fff" />
+                      <Text style={styles.btnText}>Download PDF</Text>
+                    </View>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  style={styles.closeBtn}
+                  onPress={() => setSelectedBill(null)}
+                >
+                  <View style={styles.btnContent}>
+                    <Feather name="x" size={16} color="#fff" />
+                    <Text style={styles.btnText}>Close</Text>
+                  </View>
+                </Pressable>
+              </View>
             </ScrollView>
           </View>
         </View>
@@ -534,16 +623,42 @@ const styles = StyleSheet.create({
     color: "#16a34a",
   },
 
-  closeBtn: {
+  /* Buttons */
+
+  btnRow: {
+    flexDirection: "row",
+    gap: 12,
     marginTop: 20,
+  },
+
+  btnContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  downloadBtn: {
+    flex: 1,
+    padding: 14,
+    backgroundColor: "#16a34a",
+    borderRadius: 12,
+    alignItems: "center",
+  },
+
+  closeBtn: {
+    flex: 1,
     padding: 14,
     backgroundColor: "#2563eb",
     borderRadius: 12,
+    alignItems: "center",
   },
 
-  closeText: {
+  btnDisabled: {
+    opacity: 0.7,
+  },
+
+  btnText: {
     color: "#fff",
-    textAlign: "center",
     fontFamily: "Poppins-SemiBold",
   },
 });
