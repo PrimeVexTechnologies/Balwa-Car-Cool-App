@@ -6,15 +6,26 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "NODE_ENV": "development"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "NODE_ENV": "preview"
+      }
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "NODE_ENV": "production",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ofdugxevyhkjvegqiyeg.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mZHVneGV2eWhranZlZ3FpeWVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NDA2MjAsImV4cCI6MjA4NTMxNjYyMH0.9KDcLmpJSZgx8Nm4a2RAXtDKPniCAckbTqft3ck67Pw"
       }
     }
   },

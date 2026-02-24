@@ -19,10 +19,9 @@ import {
   View,
 } from "react-native";
 
-import { supabase } from "@/lib/supabase";
 import { generateBill } from "@/utils/generateBill";
 import { generateBillPDF } from "@/utils/pdfService";
-
+import { supabase } from "../../lib/supabase";
 /* ------------------------------------------------------------------ */
 /* THEME */
 /* ------------------------------------------------------------------ */

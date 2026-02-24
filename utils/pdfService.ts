@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../lib/supabase";
 import * as Print from "expo-print";
 import * as FileSystem from "expo-file-system/legacy";
 

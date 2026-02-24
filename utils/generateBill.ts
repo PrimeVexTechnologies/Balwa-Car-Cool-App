@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../lib/supabase";
 
 type PartInput = {
     inventory_variant_id: string;
