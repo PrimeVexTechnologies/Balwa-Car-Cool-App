@@ -163,11 +163,17 @@ export default function ServiceHistoryScreen() {
 
       const fileUri = baseDir + `invoice_${selectedBill.invoice_no}.pdf`;
 
-      const download = await FileSystem.downloadAsync(data.pdf_url, fileUri);
+      const download = await FileSystem.downloadAsync(
+        data.pdf_url,
+        fileUri
+      );
 
-      await MediaLibrary.createAssetAsync(download.uri);
+      console.log("Download success:", download);
 
-      Alert.alert("Success", "Invoice saved in Downloads");
+      Alert.alert(
+        "Download OK",
+        "File downloaded successfully"
+      );
     } catch (err: any) {
       console.log("Download Error:", err);
 
