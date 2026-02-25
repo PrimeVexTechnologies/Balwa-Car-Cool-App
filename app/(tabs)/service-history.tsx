@@ -1,6 +1,6 @@
 import { supabase } from "../../lib/supabase";
 import { Feather } from "@expo/vector-icons";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
 import { useEffect, useState } from "react";
 import {
@@ -142,38 +142,40 @@ export default function ServiceHistoryScreen() {
         .single();
 
       if (error) throw new Error("Could not fetch invoice file");
-
       if (!data?.pdf_url) throw new Error("Invoice PDF not found");
 
-      const perm = await MediaLibrary.requestPermissionsAsync();
+      console.log("PDF URL from DB:", data.pdf_url);
 
+      // Ask permission
+      const perm = await MediaLibrary.requestPermissionsAsync();
       if (!perm.granted) {
         Alert.alert(
           "Permission Required",
-          "Allow storage permission to download invoice.",
+          "Allow storage permission to download invoice."
         );
         return;
       }
 
-      const baseDir =
-        (FileSystem as any).documentDirectory ||
-        (FileSystem as any).cacheDirectory;
+      // Download to cache directory first
+      const fileUri =
+        FileSystem.cacheDirectory +
+        `invoice_${selectedBill.invoice_no}.pdf`;
 
-      if (!baseDir) throw new Error("Storage path not available");
-
-      const fileUri = baseDir + `invoice_${selectedBill.invoice_no}.pdf`;
-
-      const download = await FileSystem.downloadAsync(
+      const downloadResumable = FileSystem.createDownloadResumable(
         data.pdf_url,
         fileUri
       );
 
-      console.log("Download success:", download);
+      const result = await downloadResumable.downloadAsync();
 
-      Alert.alert(
-        "Download OK",
-        "File downloaded successfully"
-      );
+      if (!result?.uri) {
+        throw new Error("Download failed");
+      }
+
+      // Save to device gallery / downloads
+      await MediaLibrary.saveToLibraryAsync(result.uri);
+
+      Alert.alert("Download OK", "Invoice saved to device");
     } catch (err: any) {
       console.log("Download Error:", err);
 
