@@ -2,6 +2,7 @@ import { supabase } from "../../lib/supabase";
 import { Feather } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
+import * as Linking from "expo-linking";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -144,50 +145,11 @@ export default function ServiceHistoryScreen() {
       if (error) throw new Error("Could not fetch invoice file");
       if (!data?.pdf_url) throw new Error("Invoice PDF not found");
 
-      console.log("PDF URL from DB:", data.pdf_url);
+      // Open PDF in browser
+      await Linking.openURL(data.pdf_url);
 
-      // Ask permission
-      const perm = await MediaLibrary.requestPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert(
-          "Permission Required",
-          "Allow storage permission to download invoice."
-        );
-        return;
-      }
-
-      // Download to cache directory first
-      const fileUri =
-        FileSystem.cacheDirectory +
-        `invoice_${selectedBill.invoice_no}.pdf`;
-
-      const downloadResumable = FileSystem.createDownloadResumable(
-        data.pdf_url,
-        fileUri
-      );
-
-      const result = await downloadResumable.downloadAsync();
-
-      if (!result?.uri) {
-        throw new Error("Download failed");
-      }
-
-      // Save to device gallery / downloads
-      await MediaLibrary.saveToLibraryAsync(result.uri);
-
-      Alert.alert("Download OK", "Invoice saved to device");
-    } catch (err: any) {
-      console.log("Download Error:", err);
-
-      let message = "Failed to download invoice";
-
-      if (err?.message?.toLowerCase().includes("permission")) {
-        message = "Storage permission denied";
-      } else if (err?.message?.toLowerCase().includes("network")) {
-        message = "Check your internet connection";
-      }
-
-      Alert.alert("Download Failed", message);
+    } catch (err) {
+      Alert.alert("Download Failed", "Could not open invoice");
     } finally {
       setDownloading(false);
     }
