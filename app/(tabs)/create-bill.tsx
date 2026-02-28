@@ -19,9 +19,28 @@ import {
   View,
 } from "react-native";
 
-import { generateBill } from "@/utils/generateBill";
-import { generateBillPDF } from "@/utils/pdfService";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/src/core/lib/supabase";
+
+import Step1Vehicle from "@/src/features/billing/components/Step1Vehicle";
+import Step2Problems from "@/src/features/billing/components/Step2Problems";
+import Step3Services from "@/src/features/billing/components/Step3Services";
+import Step4Final from "@/src/features/billing/components/Step4Final";
+import { PrimaryBtn, Option } from "@/src/features/billing/components/BillingCommon";
+
+import {
+  loadBillingInitialData,
+  fetchCarByNumber,
+  createFullInvoice,
+} from "@/src/features/billing/services/billing.service";
+
+import {
+  Service,
+  Problem,
+  Product,
+  SelectedService,
+  PartItem,
+} from "@/src/features/billing/types/billing.types";
+
 /* ------------------------------------------------------------------ */
 /* THEME */
 /* ------------------------------------------------------------------ */
@@ -39,52 +58,6 @@ const COLORS = {
   gray: "#94a3b8",
   border: "#e5e7eb",
 };
-
-/* ------------------------------------------------------------------ */
-/* TYPES */
-/* ------------------------------------------------------------------ */
-
-type Service = {
-  id: string;
-  service_name: string;
-};
-
-type Problem = {
-  id: string;
-  name: string;
-};
-
-type Product = {
-  id: string;
-  name: string;
-};
-
-type Variant = {
-  id: string;
-  variant_name: string;
-  quantity: number;
-};
-
-type PartItem = {
-  inventory_variant_id: string;
-  variant_name: string;
-  quantity: number;
-  price_per_unit: number;
-};
-
-type SelectedService = {
-  service_charge: number;
-  parts: PartItem[];
-};
-
-type CarWithCustomer = {
-  car_model: string | null;
-  customers: {
-    name: string;
-    mobile: string;
-  } | null;
-};
-
 /* ------------------------------------------------------------------ */
 /* MAIN */
 /* ------------------------------------------------------------------ */
@@ -101,13 +74,6 @@ export default function CreateBillScreen() {
   const [error, setError] = useState("");
 
   const [step1Error, setStep1Error] = useState("");
-
-  /* Vehicle */
-
-  const [customerName, setCustomerName] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [carNumber, setCarNumber] = useState("");
-  const [carModel, setCarModel] = useState("");
 
   /* Lists */
 
@@ -162,68 +128,29 @@ export default function CreateBillScreen() {
   /* ------------------------------------------------------------------ */
 
   useEffect(() => {
-    loadInitialData();
+    const init = async () => {
+      try {
+        const data = await loadBillingInitialData();
+        setServicesList(data.services);
+        setProducts(data.products);
+        setProblemsList(data.problems);
+      } catch (err) {
+        console.log("Load error:", err);
+      }
+    };
+
+    init();
   }, []);
-
-  const loadInitialData = async () => {
-    try {
-      const [s, p, pr] = await Promise.all([
-        supabase
-          .from("services")
-          .select("id, service_name")
-          .eq("is_active", true),
-
-        supabase.from("inventory_products").select("id, name"),
-
-        supabase.from("problem_types").select("id, name"),
-      ]);
-
-      if (s.data) setServicesList(s.data);
-      if (p.data) setProducts(p.data);
-      if (pr.data) setProblemsList(pr.data);
-    } catch (err) {
-      console.log("Load error:", err);
-    }
-  };
 
   /* ------------------------------------------------------------------ */
   /* FETCH CAR (AUTO + BUTTON) */
   /* ------------------------------------------------------------------ */
 
   const fetchCarDetails = useCallback(async () => {
-    const number = vehicleForm.carNumber.trim().toUpperCase();
-
-    if (!number) {
-      console.log("Car number empty");
-      return;
-    }
-
-    console.log("Fetching for:", number);
-
     try {
       setFetchingCar(true);
 
-      const { data, error } = await supabase
-        .from("cars")
-        .select(
-          `
-          car_model,
-          customers:customer_id (
-            name,
-            mobile
-          )
-        `,
-        )
-        .eq("car_number", vehicleForm.carNumber)
-        .maybeSingle<CarWithCustomer>();
-
-      console.log("Supabase response:", data, error);
-
-      if (error) {
-        console.log("Fetch error:", error);
-        Alert.alert("Error fetching car");
-        return;
-      }
+      const data = await fetchCarByNumber(vehicleForm.carNumber);
 
       if (!data) {
         Alert.alert("Car not found in database");
@@ -236,6 +163,9 @@ export default function CreateBillScreen() {
         customerName: data.customers?.name || "",
         mobile: data.customers?.mobile || "",
       }));
+    } catch (error) {
+      console.log("Fetch error:", error);
+      Alert.alert("Error fetching car");
     } finally {
       setFetchingCar(false);
     }
@@ -383,134 +313,17 @@ export default function CreateBillScreen() {
 
         {step === 1 && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Vehicle Details</Text>
-
-            {/* Form Level Error */}
-            {step1Error !== "" && (
-              <View style={styles.formErrorBox}>
-                <Text style={styles.formErrorText}>{step1Error}</Text>
-              </View>
-            )}
-
-            {/* Car Number + Fetch */}
-            <View
-              style={[
-                styles.input,
-                styles.fetchWrapper,
-                vehicleTouched.carNumber &&
-                  vehicleErrors.carNumber &&
-                  styles.inputError,
-              ]}
-            >
-              <TextInput
-                style={styles.fetchTextInput}
-                placeholder="Car Number"
-                autoCapitalize="characters"
-                value={vehicleForm.carNumber}
-                onChangeText={(v) => {
-                  setVehicleForm((p) => ({ ...p, carNumber: v }));
-                  if (vehicleTouched.carNumber)
-                    validateVehicleField("carNumber", v);
-                }}
-                onBlur={() => {
-                  setVehicleTouched((p) => ({ ...p, carNumber: true }));
-                  validateVehicleField("carNumber", vehicleForm.carNumber);
-                }}
-              />
-
-              <Pressable style={styles.fetchIconBtn} onPress={fetchCarDetails}>
-                {fetchingCar ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.fetchIcon}>🔍</Text>
-                )}
-              </Pressable>
-            </View>
-
-            {vehicleTouched.carNumber && vehicleErrors.carNumber ? (
-              <Text style={styles.fieldError}>{vehicleErrors.carNumber}</Text>
-            ) : null}
-
-            {/* Customer Name */}
-            <TextInput
-              style={[
-                styles.input,
-                vehicleTouched.customerName &&
-                  vehicleErrors.customerName &&
-                  styles.inputError,
-              ]}
-              placeholder="Customer Name"
-              value={vehicleForm.customerName}
-              onChangeText={(v) => {
-                setVehicleForm((p) => ({ ...p, customerName: v }));
-                if (vehicleTouched.customerName)
-                  validateVehicleField("customerName", v);
-              }}
-              onBlur={() => {
-                setVehicleTouched((p) => ({
-                  ...p,
-                  customerName: true,
-                }));
-                validateVehicleField("customerName", vehicleForm.customerName);
-              }}
+            <Step1Vehicle
+              vehicleForm={vehicleForm}
+              vehicleTouched={vehicleTouched}
+              vehicleErrors={vehicleErrors}
+              step1Error={step1Error}
+              fetchingCar={fetchingCar}
+              setVehicleForm={setVehicleForm}
+              setVehicleTouched={setVehicleTouched}
+              validateVehicleField={validateVehicleField}
+              fetchCarDetails={fetchCarDetails}
             />
-
-            {vehicleTouched.customerName && vehicleErrors.customerName ? (
-              <Text style={styles.fieldError}>
-                {vehicleErrors.customerName}
-              </Text>
-            ) : null}
-
-            {/* Mobile */}
-            <TextInput
-              style={[
-                styles.input,
-                vehicleTouched.mobile &&
-                  vehicleErrors.mobile &&
-                  styles.inputError,
-              ]}
-              placeholder="Mobile Number"
-              keyboardType="number-pad"
-              maxLength={10}
-              value={vehicleForm.mobile}
-              onChangeText={(v) => {
-                setVehicleForm((p) => ({ ...p, mobile: v }));
-                if (vehicleTouched.mobile) validateVehicleField("mobile", v);
-              }}
-              onBlur={() => {
-                setVehicleTouched((p) => ({ ...p, mobile: true }));
-                validateVehicleField("mobile", vehicleForm.mobile);
-              }}
-            />
-
-            {vehicleTouched.mobile && vehicleErrors.mobile ? (
-              <Text style={styles.fieldError}>{vehicleErrors.mobile}</Text>
-            ) : null}
-
-            {/* Car Model */}
-            <TextInput
-              style={[
-                styles.input,
-                vehicleTouched.carModel &&
-                  vehicleErrors.carModel &&
-                  styles.inputError,
-              ]}
-              placeholder="Car Model"
-              value={vehicleForm.carModel}
-              onChangeText={(v) => {
-                setVehicleForm((p) => ({ ...p, carModel: v }));
-                if (vehicleTouched.carModel)
-                  validateVehicleField("carModel", v);
-              }}
-              onBlur={() => {
-                setVehicleTouched((p) => ({ ...p, carModel: true }));
-                validateVehicleField("carModel", vehicleForm.carModel);
-              }}
-            />
-
-            {vehicleTouched.carModel && vehicleErrors.carModel ? (
-              <Text style={styles.fieldError}>{vehicleErrors.carModel}</Text>
-            ) : null}
           </View>
         )}
 
@@ -518,102 +331,28 @@ export default function CreateBillScreen() {
 
         {step === 2 && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Reported Problems</Text>
-
-            {problemsList.map((p) => (
-              <Option
-                key={p.id}
-                label={p.name}
-                active={problems.includes(p.id)}
-                onPress={() => toggleProblem(p.id)}
-              />
-            ))}
-
-            <Option
-              label="Other"
-              active={problems.includes("other")}
-              onPress={() => toggleProblem("other")}
+            <Step2Problems
+              problemsList={problemsList}
+              problems={problems}
+              otherProblem={otherProblem}
+              setOtherProblem={setOtherProblem}
+              toggleProblem={toggleProblem}
             />
-
-            {problems.includes("other") && (
-              <TextInput
-                style={styles.input}
-                placeholder="Describe problem"
-                value={otherProblem}
-                onChangeText={setOtherProblem}
-              />
-            )}
           </View>
         )}
+
         {/* ================= STEP 3 ================= */}
 
         {step === 3 && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Services Performed</Text>
-
-            {servicesList.map((s) => {
-              const selected = services[s.id];
-
-              return (
-                <View key={s.id} style={{ marginBottom: 16 }}>
-                  <Option
-                    label={s.service_name}
-                    active={!!selected}
-                    onPress={() => toggleService(s.id)}
-                  />
-
-                  {selected && (
-                    <View style={{ marginTop: 14 }}>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Service Charge"
-                        keyboardType="numeric"
-                        value={
-                          selected.service_charge
-                            ? String(selected.service_charge)
-                            : ""
-                        }
-                        onChangeText={(v) =>
-                          setServices((prev) => ({
-                            ...prev,
-                            [s.id]: {
-                              ...(prev[s.id] ?? {
-                                service_charge: 0,
-                                parts: [],
-                              }),
-                              service_charge: Number(v) || 0,
-                            },
-                          }))
-                        }
-                      />
-
-                      {selected.parts.map((p, i) => (
-                        <View key={i} style={styles.partRowPremium}>
-                          <Text style={styles.partText}>
-                            {p.variant_name} × {p.quantity}
-                          </Text>
-                          <Text style={styles.partText}>
-                            ₹{p.price_per_unit}
-                          </Text>
-                        </View>
-                      ))}
-
-                      <Pressable
-                        style={styles.addPartPremiumBtn}
-                        onPress={() => {
-                          setActiveServiceId(s.id);
-                          setModalVisible(true);
-                        }}
-                      >
-                        <Text style={styles.addPartPremiumText}>
-                          ＋ Add Part
-                        </Text>
-                      </Pressable>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
+            <Step3Services
+              servicesList={servicesList}
+              services={services}
+              setServices={setServices}
+              toggleService={toggleService}
+              setActiveServiceId={setActiveServiceId}
+              setModalVisible={setModalVisible}
+            />
           </View>
         )}
 
@@ -621,35 +360,14 @@ export default function CreateBillScreen() {
 
         {step === 4 && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Final Charges</Text>
-
-            <View style={styles.totalBox}>
-              <Text style={styles.totalLabel}>Preview Total</Text>
-              <Text style={styles.totalValue}>₹{previewTotal}</Text>
-            </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Labor Charge"
-              keyboardType="numeric"
-              value={laborCharge}
-              onChangeText={setLaborCharge}
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Extra Charge"
-              keyboardType="numeric"
-              value={extraCharge}
-              onChangeText={setExtraCharge}
-            />
-
-            <TextInput
-              style={[styles.input, { height: 90 }]}
-              placeholder="Remarks"
-              multiline
-              value={remarks}
-              onChangeText={setRemarks}
+            <Step4Final
+              previewTotal={previewTotal}
+              laborCharge={laborCharge}
+              extraCharge={extraCharge}
+              remarks={remarks}
+              setLaborCharge={setLaborCharge}
+              setExtraCharge={setExtraCharge}
+              setRemarks={setRemarks}
             />
           </View>
         )}
@@ -677,72 +395,31 @@ export default function CreateBillScreen() {
             <PrimaryBtn
               title={loading ? "Processing..." : "Generate Invoice"}
               onPress={async () => {
-                // if (!isStep1Valid) return;
-
                 try {
                   setLoading(true);
                   setError("");
 
-                  const { data: customer } = await supabase
-                    .from("customers")
-                    .upsert(
-                      { name: customerName, mobile },
-                      { onConflict: "mobile" },
-                    )
-                    .select()
-                    .single();
-                  if (!customer) throw new Error("Customer save failed");
-
-                  const { data: car } = await supabase
-                    .from("cars")
-                    .upsert(
-                      {
-                        car_number: carNumber,
-                        car_model: carModel,
-                        customer_id: customer.id,
-                      },
-                      { onConflict: "car_number" },
-                    )
-                    .select()
-                    .single();
-                  if (!car) throw new Error("Car save failed");
-
-                  const payload = Object.entries(services).map(([id, s]) => ({
-                    service_id: id,
-                    service_charge: s.service_charge,
-                    parts: s.parts,
-                  }));
-
-                  const res: any = await generateBill({
-                    customer_id: customer.id,
-                    car_id: car.id,
-                    problems: problems.map((p) =>
-                      p === "other"
-                        ? otherProblem
-                        : problemsList.find((x) => x.id === p)?.name || "",
-                    ),
-                    services: payload,
-                    labor_charge: Number(laborCharge) || 0,
-                    extra_charge: Number(extraCharge) || 0,
+                  const res = await createFullInvoice({
+                    vehicleForm,
+                    services,
+                    problems,
+                    problemsList,
+                    otherProblem,
+                    laborCharge,
+                    extraCharge,
                     remarks,
-                  });
-
-                  await generateBillPDF({
-                    billId: res.bill_id,
-                    invoiceNo: res.invoice_no,
-                    customerName,
-                    mobile,
-                    carNumber,
-                    carModel,
                   });
 
                   Alert.alert("Success", `Invoice ${res.invoice_no} generated`);
 
+                  // Reset form
                   setStep(1);
-                  setCustomerName("");
-                  setMobile("");
-                  setCarNumber("");
-                  setCarModel("");
+                  setVehicleForm({
+                    carNumber: "",
+                    customerName: "",
+                    mobile: "",
+                    carModel: "",
+                  });
                   setProblems([]);
                   setOtherProblem("");
                   setServices({});
@@ -787,47 +464,6 @@ export default function CreateBillScreen() {
         />
       </ScrollView>
     </KeyboardAvoidingView>
-  );
-}
-
-/* ================= REUSABLE ================= */
-
-function PrimaryBtn({
-  title,
-  onPress,
-  disabled,
-}: {
-  title: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.btn, disabled && { opacity: 0.6 }]}
-    >
-      <Text style={styles.btnText}>{title}</Text>
-    </Pressable>
-  );
-}
-
-function Option({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.option, active && styles.optionActive]}
-    >
-      <Text>{label}</Text>
-    </Pressable>
   );
 }
 

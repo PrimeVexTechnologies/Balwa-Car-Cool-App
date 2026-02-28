@@ -1,6 +1,6 @@
 // InventoryScreen.tsx
 
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/src/core/lib/supabase";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,

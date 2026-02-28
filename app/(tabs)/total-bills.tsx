@@ -1,6 +1,8 @@
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/src/core/lib/supabase";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+
+import { BillRow } from "@/src/features/billing/types/billing.types";
 
 /* ------------------------------------------------------------------ */
 /* DATE FILTERS */
@@ -119,7 +121,8 @@ export default function TotalBillsScreen() {
         .from("bills")
         .select("created_at, total_amount")
         .gte("created_at", start)
-        .lte("created_at", end);
+        .lte("created_at", end)
+        .returns<BillRow[]>();
 
       if (error) {
         console.log("Totals error:", error);
@@ -129,7 +132,8 @@ export default function TotalBillsScreen() {
       if (!data) return;
 
       const revenue = data.reduce(
-        (sum, row) => sum + (row.total_amount ?? 0),
+        (sum: number, row: BillRow) =>
+          sum + (row.total_amount ?? 0),
         0,
       );
 
@@ -140,7 +144,7 @@ export default function TotalBillsScreen() {
 
       const grouped: Record<string, number> = {};
 
-      data.forEach((row) => {
+      data.forEach((row: BillRow) => {
         const key = formatMonth(row.created_at);
 
         grouped[key] = (grouped[key] || 0) + (row.total_amount ?? 0);

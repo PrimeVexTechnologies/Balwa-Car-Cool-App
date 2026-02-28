@@ -1,6 +1,6 @@
 // DashboardScreen.tsx
 
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/src/core/lib/supabase";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
