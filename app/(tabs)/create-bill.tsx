@@ -1,10 +1,9 @@
 // ============================
 // CreateBillScreen.tsx
-// PART 1 — TOP + STEPS 1 & 2
+// PART 1 OF 2 (Main Screen)
 // ============================
 
 import React, { useCallback, useEffect, useState } from "react";
-
 import {
   ActivityIndicator,
   Alert,
@@ -50,57 +49,42 @@ const COLORS = {
   success: "#16a34a",
   danger: "#ef4444",
 
-  bg: "#f8fafc",
+  bg: "#f1f5f9",
   card: "#ffffff",
 
   text: "#0f172a",
   muted: "#64748b",
   gray: "#94a3b8",
-  border: "#e5e7eb",
+  border: "#e2e8f0",
 };
+
 /* ------------------------------------------------------------------ */
 /* MAIN */
 /* ------------------------------------------------------------------ */
 
 export default function CreateBillScreen() {
-  /* Steps */
-
   const [step, setStep] = useState<number>(1);
-
-  /* Status */
 
   const [loading, setLoading] = useState(false);
   const [fetchingCar, setFetchingCar] = useState(false);
   const [error, setError] = useState("");
-
   const [step1Error, setStep1Error] = useState("");
-
-  /* Lists */
 
   const [servicesList, setServicesList] = useState<Service[]>([]);
   const [problemsList, setProblemsList] = useState<Problem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
 
-  /* Problems */
-
   const [problems, setProblems] = useState<string[]>([]);
   const [otherProblem, setOtherProblem] = useState("");
 
-  /* Services */
-
   const [services, setServices] = useState<Record<string, SelectedService>>({});
-
-  /* Charges */
 
   const [laborCharge, setLaborCharge] = useState("");
   const [extraCharge, setExtraCharge] = useState("");
   const [remarks, setRemarks] = useState("");
 
-  /* Modal */
-
   const [modalVisible, setModalVisible] = useState(false);
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
-  // const [variants, setVariants] = useState<Variant[]>([]);
 
   const [vehicleForm, setVehicleForm] = useState({
     carNumber: "",
@@ -123,9 +107,7 @@ export default function CreateBillScreen() {
     carModel: "",
   });
 
-  /* ------------------------------------------------------------------ */
-  /* LOAD DATA */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- LOAD DATA ---------------- */
 
   useEffect(() => {
     const init = async () => {
@@ -138,13 +120,10 @@ export default function CreateBillScreen() {
         console.log("Load error:", err);
       }
     };
-
     init();
   }, []);
 
-  /* ------------------------------------------------------------------ */
-  /* FETCH CAR (AUTO + BUTTON) */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- FETCH CAR ---------------- */
 
   const fetchCarDetails = useCallback(async () => {
     try {
@@ -163,17 +142,14 @@ export default function CreateBillScreen() {
         customerName: data.customers?.name || "",
         mobile: data.customers?.mobile || "",
       }));
-    } catch (error) {
-      console.log("Fetch error:", error);
+    } catch {
       Alert.alert("Error fetching car");
     } finally {
       setFetchingCar(false);
     }
   }, [vehicleForm.carNumber]);
 
-  /* ------------------------------------------------------------------ */
-  /* HELPERS */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- HELPERS ---------------- */
 
   const toggleProblem = (id: string) => {
     setProblems((prev) =>
@@ -199,9 +175,7 @@ export default function CreateBillScreen() {
     });
   };
 
-  /* ------------------------------------------------------------------ */
-  /* VALIDATION */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- VALIDATION ---------------- */
 
   const validateStep1 = () => {
     if (!vehicleForm.carNumber.trim()) {
@@ -235,16 +209,13 @@ export default function CreateBillScreen() {
       case "carNumber":
         if (!value.trim()) error = "Car number is required";
         break;
-
       case "customerName":
         if (!value.trim()) error = "Customer name is required";
         break;
-
       case "mobile":
         if (!/^\d{10}$/.test(value))
           error = "Enter valid 10 digit mobile number";
         break;
-
       case "carModel":
         if (!value.trim()) error = "Car model is required";
         break;
@@ -254,9 +225,7 @@ export default function CreateBillScreen() {
     return error === "";
   };
 
-  /* ------------------------------------------------------------------ */
-  /* UI */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- TOTAL ---------------- */
 
   const previewTotal =
     Object.values(services).reduce((sum, s) => {
@@ -264,11 +233,12 @@ export default function CreateBillScreen() {
         (p, x) => p + x.quantity * x.price_per_unit,
         0,
       );
-
       return sum + parts + s.service_charge;
     }, 0) +
     Number(laborCharge || 0) +
     Number(extraCharge || 0);
+
+  /* ---------------- UI ---------------- */
 
   return (
     <KeyboardAvoidingView
@@ -277,18 +247,15 @@ export default function CreateBillScreen() {
     >
       <ScrollView
         style={styles.screen}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 60 }}
+        showsVerticalScrollIndicator={false}
       >
-        {/* HEADER */}
-
         <View style={styles.header}>
           <Text style={styles.title}>Create Invoice</Text>
           <Text style={styles.subtitle}>
             Enter vehicle & service information
           </Text>
         </View>
-
-        {/* PROGRESS */}
 
         <View style={styles.progress}>
           {[1, 2, 3, 4].map((n) => (
@@ -301,15 +268,16 @@ export default function CreateBillScreen() {
               >
                 <Text style={styles.progressText}>{n}</Text>
               </View>
-
               {n < 4 && <View style={styles.progressLine} />}
             </View>
           ))}
         </View>
 
-        {error !== "" && <Text style={styles.error}>{error}</Text>}
-
-        {/* ================= STEP 1 ================= */}
+        {error !== "" && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
         {step === 1 && (
           <View style={styles.card}>
@@ -327,8 +295,6 @@ export default function CreateBillScreen() {
           </View>
         )}
 
-        {/* ================= STEP 2 ================= */}
-
         {step === 2 && (
           <View style={styles.card}>
             <Step2Problems
@@ -340,8 +306,6 @@ export default function CreateBillScreen() {
             />
           </View>
         )}
-
-        {/* ================= STEP 3 ================= */}
 
         {step === 3 && (
           <View style={styles.card}>
@@ -355,8 +319,6 @@ export default function CreateBillScreen() {
             />
           </View>
         )}
-
-        {/* ================= STEP 4 ================= */}
 
         {step === 4 && (
           <View style={styles.card}>
@@ -372,8 +334,6 @@ export default function CreateBillScreen() {
           </View>
         )}
 
-        {/* ================= NAVIGATION ================= */}
-
         <View style={styles.nav}>
           {step > 1 && (
             <PrimaryBtn title="Back" onPress={() => setStep(step - 1)} />
@@ -383,17 +343,14 @@ export default function CreateBillScreen() {
             <PrimaryBtn
               title="Continue"
               onPress={() => {
-                if (step === 1) {
-                  const valid = validateStep1();
-                  if (!valid) return;
-                }
-
+                if (step === 1 && !validateStep1()) return;
                 setStep(step + 1);
               }}
             />
           ) : (
             <PrimaryBtn
               title={loading ? "Processing..." : "Generate Invoice"}
+              disabled={loading}
               onPress={async () => {
                 try {
                   setLoading(true);
@@ -410,40 +367,25 @@ export default function CreateBillScreen() {
                     remarks,
                   });
 
-                  Alert.alert("Success", `Invoice ${res.invoice_no} generated`);
+                  Alert.alert(
+                    "Success",
+                    `Invoice ${res.invoice_no} generated`,
+                  );
 
-                  // Reset form
                   setStep(1);
-                  setVehicleForm({
-                    carNumber: "",
-                    customerName: "",
-                    mobile: "",
-                    carModel: "",
-                  });
-                  setProblems([]);
-                  setOtherProblem("");
-                  setServices({});
-                  setLaborCharge("");
-                  setExtraCharge("");
-                  setRemarks("");
                 } catch (err: any) {
                   setError(err.message || "Failed");
                 } finally {
                   setLoading(false);
                 }
               }}
-              disabled={loading}
             />
           )}
         </View>
 
-        {/* ================= MODAL ================= */}
-
         <InventoryModal
           visible={modalVisible}
           products={products}
-          // variants={variants}
-          // setVariants={setVariants}
           onClose={() => setModalVisible(false)}
           onAdd={(part: PartItem) => {
             if (!activeServiceId) return;
@@ -459,7 +401,7 @@ export default function CreateBillScreen() {
               },
             }));
 
-            setActiveServiceId(null); // IMPORTANT
+            setActiveServiceId(null);
           }}
         />
       </ScrollView>
@@ -469,7 +411,12 @@ export default function CreateBillScreen() {
 
 /* ================= MODAL ================= */
 
-function InventoryModal({ visible, products, onClose, onAdd }: any) {
+function InventoryModal({
+  visible,
+  products,
+  onClose,
+  onAdd,
+}: any) {
   const [product, setProduct] = useState<any>(null);
   const [variant, setVariant] = useState<any>(null);
   const [variants, setVariants] = useState<any[]>([]);
@@ -519,85 +466,76 @@ function InventoryModal({ visible, products, onClose, onAdd }: any) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="fade" transparent>
       <View style={styles.modalOverlay}>
         <View style={styles.modalCard}>
           {/* HEADER */}
           <View style={styles.modalHeader}>
-            {/* BACK */}
             <Pressable onPress={handleBack} style={styles.modalBackBtn}>
               {(product || variant) && (
                 <Text style={styles.modalBackText}>‹ Back</Text>
               )}
             </Pressable>
 
-            {/* TITLE */}
             <Text style={styles.modalTitle}>
               {!product && "Select Product"}
               {product && !variant && "Select Variant"}
               {variant && "Part Details"}
             </Text>
 
-            {/* CLOSE */}
             <Pressable onPress={onClose}>
               <Text style={styles.modalClose}>✕</Text>
             </Pressable>
           </View>
 
-          {/* CONTENT */}
           <ScrollView showsVerticalScrollIndicator={false}>
-            {/* PRODUCT */}
-            {!product && (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Select Product</Text>
+            {/* PRODUCT LIST */}
+            {!product &&
+              products.map((p: any) => (
+                <Pressable
+                  key={p.id}
+                  style={({ pressed }) => [
+                    styles.modalItem,
+                    pressed && styles.modalItemPressed,
+                  ]}
+                  onPress={() => {
+                    setProduct(p);
+                    loadVariants(p.id);
+                  }}
+                >
+                  <Text style={styles.modalItemText}>{p.name}</Text>
+                  <Text style={styles.modalArrow}>›</Text>
+                </Pressable>
+              ))}
 
-                {products.map((p: any) => (
-                  <Pressable
-                    key={p.id}
-                    style={styles.modalItem}
-                    onPress={() => {
-                      setProduct(p);
-                      loadVariants(p.id);
-                    }}
-                  >
-                    <Text style={styles.modalItemText}>{p.name}</Text>
+            {/* VARIANT LIST */}
+            {product &&
+              !variant &&
+              variants.map((v: any) => (
+                <Pressable
+                  key={v.id}
+                  style={({ pressed }) => [
+                    styles.modalItem,
+                    pressed && styles.modalItemPressed,
+                  ]}
+                  onPress={() => setVariant(v)}
+                >
+                  <View>
+                    <Text style={styles.modalItemText}>
+                      {v.variant_name}
+                    </Text>
+                    <Text style={styles.modalSubText}>
+                      Stock: {v.quantity}
+                    </Text>
+                  </View>
 
-                    <Text style={styles.modalArrow}>›</Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+                  <Text style={styles.modalArrow}>›</Text>
+                </Pressable>
+              ))}
 
-            {/* VARIANT */}
-            {product && !variant && (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Select Variant</Text>
-
-                {variants.map((v: any) => (
-                  <Pressable
-                    key={v.id}
-                    style={styles.modalItem}
-                    onPress={() => setVariant(v)}
-                  >
-                    <View>
-                      <Text style={styles.modalItemText}>{v.variant_name}</Text>
-
-                      <Text style={styles.modalSubText}>
-                        Stock: {v.quantity}
-                      </Text>
-                    </View>
-
-                    <Text style={styles.modalArrow}>›</Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-
-            {/* FORM */}
+            {/* PART DETAILS FORM */}
             {variant && (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Part Details</Text>
-
+              <View style={styles.modalForm}>
                 <Text style={styles.modalLabel}>Quantity</Text>
 
                 <TextInput
@@ -607,7 +545,7 @@ function InventoryModal({ visible, products, onClose, onAdd }: any) {
                   onChangeText={setQty}
                 />
 
-                <Text style={styles.modalLabel}>Price</Text>
+                <Text style={styles.modalLabel}>Price per unit</Text>
 
                 <TextInput
                   style={styles.modalInput}
@@ -617,7 +555,10 @@ function InventoryModal({ visible, products, onClose, onAdd }: any) {
                 />
 
                 <Pressable
-                  style={styles.modalAddBtn}
+                  style={({ pressed }) => [
+                    styles.modalAddBtn,
+                    pressed && { opacity: 0.85 },
+                  ]}
                   onPress={() => {
                     if (Number(qty) <= 0) {
                       Alert.alert("Enter valid quantity");
@@ -659,8 +600,9 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    padding: 20,
+    paddingHorizontal: 20,
     paddingTop: 30,
+    marginBottom: 16,
   },
 
   title: {
@@ -679,7 +621,7 @@ const styles = StyleSheet.create({
   progress: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 12,
+    marginBottom: 18,
   },
 
   progressItem: {
@@ -688,9 +630,9 @@ const styles = StyleSheet.create({
   },
 
   progressCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: "#e5e7eb",
     alignItems: "center",
     justifyContent: "center",
@@ -711,94 +653,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#e5e7eb",
   },
 
-  error: {
-    color: COLORS.danger,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-
   card: {
     backgroundColor: COLORS.card,
-    margin: 16,
-    padding: 18,
-    borderRadius: 20,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 18,
     elevation: 3,
-  },
-
-  sectionTitle: {
-    fontSize: 15,
-    fontFamily: "Poppins-SemiBold",
-    marginBottom: 14,
-  },
-
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    fontFamily: "Poppins-Regular",
-    backgroundColor: "#fff",
-  },
-
-  fetchRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-
-  fetchBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    justifyContent: "center",
-  },
-
-  fetchText: {
-    color: "#fff",
-    fontFamily: "Poppins-SemiBold",
-  },
-
-  option: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 8,
-  },
-
-  optionActive: {
-    backgroundColor: "#e0f2fe",
-    borderColor: COLORS.primary,
-  },
-
-  partRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-
-  partText: {
-    fontSize: 13,
-    color: COLORS.muted,
-  },
-
-  totalBox: {
-    backgroundColor: "#f1f5f9",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 14,
-  },
-
-  totalLabel: {
-    fontSize: 12,
-    color: COLORS.muted,
-  },
-
-  totalValue: {
-    fontSize: 22,
-    fontFamily: "Poppins-Bold",
-    color: COLORS.success,
-    marginTop: 4,
   },
 
   nav: {
@@ -808,136 +669,80 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
-  btn: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 22,
-    borderRadius: 14,
-    minWidth: 120,
-    alignItems: "center",
-  },
-
-  btnText: {
-    color: "#fff",
-    fontFamily: "Poppins-SemiBold",
-  },
-
-  modal: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: COLORS.bg,
-  },
-
-  fieldError: {
-    color: COLORS.danger,
-    fontSize: 12,
-    marginBottom: 8,
-    fontFamily: "Poppins-Regular",
-  },
-
-  inputError: {
-    borderColor: COLORS.danger,
-  },
-
-  formErrorBox: {
+  errorBox: {
     backgroundColor: "#fee2e2",
-    borderRadius: 10,
-    padding: 10,
+    marginHorizontal: 16,
+    padding: 12,
+    borderRadius: 12,
     marginBottom: 12,
   },
 
-  formErrorText: {
+  errorText: {
     color: COLORS.danger,
     fontSize: 12,
-    fontFamily: "Poppins-Regular",
   },
 
-  fetchWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingRight: 6,
-  },
-
-  fetchTextInput: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    fontFamily: "Poppins-Regular",
-    color: COLORS.text,
-  },
-
-  fetchIconBtn: {
-    backgroundColor: COLORS.primary,
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  fetchIcon: {
-    fontSize: 16,
-  },
-
-  /* ===== MODAL PREMIUM UI ===== */
+  /* MODAL */
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
-    padding: 16,
+    padding: 18,
   },
 
   modalCard: {
     backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 16,
-    maxHeight: "90%",
+    borderRadius: 22,
+    padding: 18,
+    maxHeight: "85%",
   },
 
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    paddingBottom: 10,
-    marginBottom: 12,
+    marginBottom: 14,
   },
 
   modalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: "Poppins-SemiBold",
     color: COLORS.text,
   },
 
   modalClose: {
-    fontSize: 20,
-    color: COLORS.muted,
+    fontSize: 18,
+    color: COLORS.gray,
   },
 
-  modalSection: {
-    marginBottom: 20,
+  modalBackBtn: {
+    minWidth: 60,
   },
 
-  modalSectionTitle: {
+  modalBackText: {
     fontSize: 14,
+    color: COLORS.primary,
     fontFamily: "Poppins-SemiBold",
-    marginBottom: 10,
   },
 
   modalItem: {
     backgroundColor: "#f8fafc",
-    borderRadius: 12,
     padding: 14,
+    borderRadius: 14,
     marginBottom: 10,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
 
+  modalItemPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+
   modalItemText: {
     fontSize: 14,
+    fontFamily: "Poppins-Regular",
     color: COLORS.text,
   },
 
@@ -950,6 +755,10 @@ const styles = StyleSheet.create({
   modalArrow: {
     fontSize: 18,
     color: COLORS.gray,
+  },
+
+  modalForm: {
+    marginTop: 10,
   },
 
   modalLabel: {
@@ -972,48 +781,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 8,
   },
 
   modalAddText: {
     color: "#fff",
-    fontFamily: "Poppins-SemiBold",
-  },
-
-  /* ===== STEP 3 POLISH ===== */
-
-  addPartPremiumBtn: {
-    backgroundColor: "#eff6ff", // soft blue
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 10,
-  },
-
-  addPartPremiumText: {
-    color: COLORS.primary,
-    fontFamily: "Poppins-SemiBold",
-    fontSize: 13,
-  },
-
-  partRowPremium: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "#f8fafc",
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 6,
-  },
-
-  modalBackBtn: {
-    minWidth: 60,
-  },
-
-  modalBackText: {
-    fontSize: 14,
-    color: COLORS.primary,
     fontFamily: "Poppins-SemiBold",
   },
 });

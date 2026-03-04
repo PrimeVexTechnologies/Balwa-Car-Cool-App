@@ -391,7 +391,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     gap: 8,
 
-    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   searchInput: {
@@ -430,8 +433,8 @@ const styles = StyleSheet.create({
   retryBtn: {
     marginTop: 8,
     backgroundColor: "#2563eb",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
     borderRadius: 10,
   },
 
@@ -448,11 +451,14 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
 
-    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
 
   cardPressed: {
-    opacity: 0.9,
+    opacity: 0.95,
     transform: [{ scale: 0.98 }],
   },
 
@@ -546,7 +552,7 @@ const styles = StyleSheet.create({
   },
 
   section: {
-    gap: 4,
+    gap: 6,
   },
 
   sectionTitle: {
@@ -578,7 +584,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     alignItems: "flex-end",
-    marginTop: 6,
+    marginTop: 10,
   },
 
   totalLabel: {
@@ -609,7 +615,7 @@ const styles = StyleSheet.create({
 
   downloadBtn: {
     flex: 1,
-    padding: 14,
+    paddingVertical: 14,
     backgroundColor: "#16a34a",
     borderRadius: 12,
     alignItems: "center",
@@ -617,7 +623,7 @@ const styles = StyleSheet.create({
 
   closeBtn: {
     flex: 1,
-    padding: 14,
+    paddingVertical: 14,
     backgroundColor: "#2563eb",
     borderRadius: 12,
     alignItems: "center",
@@ -630,5 +636,6 @@ const styles = StyleSheet.create({
   btnText: {
     color: "#fff",
     fontFamily: "Poppins-SemiBold",
+    fontSize: 14,
   },
 });

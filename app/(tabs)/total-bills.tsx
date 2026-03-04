@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
 
   header: {
     paddingTop: 24,
-    marginBottom: 14,
+    marginBottom: 16,
   },
 
   title: {
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   /* Dropdown */
 
   dropdownWrapper: {
-    marginBottom: 16,
+    marginBottom: 18,
     position: "relative",
     alignSelf: "flex-start",
   },
@@ -315,12 +315,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+
     backgroundColor: "#fff",
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
+
     borderWidth: 1,
     borderColor: "#e5e7eb",
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
   dropdownText: {
@@ -340,8 +347,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#e5e7eb",
+
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 6,
+
     overflow: "hidden",
-    elevation: 8,
     minWidth: 200,
     zIndex: 20,
   },
@@ -371,15 +383,19 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 22,
   },
 
   summaryCard: {
     flex: 1,
     backgroundColor: "#fff",
     borderRadius: 18,
-    paddingVertical: 18,
+    paddingVertical: 20,
     alignItems: "center",
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     elevation: 2,
   },
 
@@ -390,7 +406,7 @@ const styles = StyleSheet.create({
   },
 
   summaryValue: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: "Poppins-Bold",
     marginTop: 4,
     color: "#0f172a",
@@ -406,19 +422,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 18,
     padding: 16,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
 
   sectionTitle: {
     fontSize: 16,
     fontFamily: "Poppins-SemiBold",
-    marginBottom: 10,
+    marginBottom: 12,
     color: "#0f172a",
   },
 
   monthRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 0.5,
     borderColor: "#e5e7eb",
   },
@@ -436,7 +457,7 @@ const styles = StyleSheet.create({
   },
 
   emptyBox: {
-    paddingVertical: 24,
+    paddingVertical: 28,
     alignItems: "center",
   },
 

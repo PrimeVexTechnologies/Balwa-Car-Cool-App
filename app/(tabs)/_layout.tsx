@@ -3,7 +3,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, usePathname, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Alert, Platform, Pressable, StyleSheet } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 /* ------------------------------------------------------------------ */
@@ -12,11 +12,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const COLORS = {
   bg: "#ffffff",
+  headerBg: "#ffffff",
   text: "#0f172a",
   muted: "#64748b",
-  border: "#e5e7eb",
+  border: "#f1f5f9",
   danger: "#ef4444",
-  pressed: "#f1f5f9",
+  pressed: "#f8fafc",
 };
 
 /* ------------------------------------------------------------------ */
@@ -26,8 +27,6 @@ const COLORS = {
 export default function Layout() {
   const router = useRouter();
   const pathname = usePathname();
-
-  /* ---------------- CHECK CURRENT SCREEN ---------------- */
 
   const isDashboard = pathname === "/(tabs)/dashboard";
 
@@ -42,38 +41,33 @@ export default function Layout() {
   /* ---------------- LOGOUT ---------------- */
 
   const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: () => {
-            // TODO: Replace with real auth logout later
-            console.log("User logged out");
-
-            router.replace("/login");
-          },
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => {
+          router.replace("/login");
         },
-      ],
-      { cancelable: true },
-    );
+      },
+    ]);
   };
 
   /* ---------------- HEADER LEFT ---------------- */
 
   const renderBackButton = () => {
-    if (isDashboard) return null;
+    if (isDashboard) return <View style={{ width: 40 }} />;
 
     return (
       <Pressable
         onPress={handleBack}
-        style={({ pressed }) => [styles.iconWrapper, pressed && styles.pressed]}
+        android_ripple={{ color: "#e2e8f0", borderless: true }}
+        style={({ pressed }) => [
+          styles.iconWrapper,
+          pressed && styles.iconPressed,
+        ]}
       >
-        <Feather name="arrow-left" size={22} color={COLORS.text} />
+        <Feather name="arrow-left" size={20} color={COLORS.text} />
       </Pressable>
     );
   };
@@ -81,14 +75,18 @@ export default function Layout() {
   /* ---------------- HEADER RIGHT ---------------- */
 
   const renderLogoutButton = () => {
-    if (!isDashboard) return null;
+    if (!isDashboard) return <View style={{ width: 40 }} />;
 
     return (
       <Pressable
         onPress={handleLogout}
-        style={({ pressed }) => [styles.iconWrapper, pressed && styles.pressed]}
+        android_ripple={{ color: "#fee2e2", borderless: true }}
+        style={({ pressed }) => [
+          styles.iconWrapper,
+          pressed && styles.iconPressed,
+        ]}
       >
-        <Feather name="log-out" size={22} color={COLORS.danger} />
+        <Feather name="log-out" size={20} color={COLORS.danger} />
       </Pressable>
     );
   };
@@ -99,8 +97,7 @@ export default function Layout() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Status Bar */}
-      <StatusBar style="dark" backgroundColor={COLORS.bg} />
+      <StatusBar style="dark" backgroundColor={COLORS.headerBg} />
 
       <Stack
         screenOptions={{
@@ -121,14 +118,21 @@ export default function Layout() {
           headerLeft: renderBackButton,
           headerRight: renderLogoutButton,
 
-          /* Animations */
+          /* Animation */
 
-          animation: Platform.OS === "ios" ? "slide_from_right" : "fade",
+          animation:
+            Platform.OS === "ios" ? "slide_from_right" : "fade",
         }}
       >
-        <Stack.Screen name="dashboard" options={{ headerTitle: "Dashboard" }} />
+        <Stack.Screen
+          name="dashboard"
+          options={{ headerTitle: "Dashboard" }}
+        />
 
-        <Stack.Screen name="inventory" options={{ headerTitle: "Inventory" }} />
+        <Stack.Screen
+          name="inventory"
+          options={{ headerTitle: "Inventory" }}
+        />
 
         <Stack.Screen
           name="service-history"
@@ -157,21 +161,31 @@ const styles = StyleSheet.create({
   /* Header */
 
   header: {
-    backgroundColor: COLORS.bg,
-
-    borderBottomWidth: 0.6,
+    backgroundColor: COLORS.headerBg,
+    borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    paddingHorizontal: 8,
 
-    elevation: 0,
+    /* Premium subtle shadow */
 
-    shadowColor: "transparent",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
   },
 
   headerTitle: {
     fontFamily: "Poppins-SemiBold",
-    fontSize: 18,
+    fontSize: 17,
     color: COLORS.text,
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
 
   /* Icons */
@@ -180,14 +194,11 @@ const styles = StyleSheet.create({
     height: 36,
     width: 36,
     borderRadius: 18,
-
     alignItems: "center",
     justifyContent: "center",
-
-    marginHorizontal: 8,
   },
 
-  pressed: {
+  iconPressed: {
     backgroundColor: COLORS.pressed,
     transform: [{ scale: 0.96 }],
   },

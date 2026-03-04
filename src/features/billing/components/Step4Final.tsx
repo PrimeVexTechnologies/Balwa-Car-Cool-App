@@ -3,88 +3,124 @@
 // ============================
 
 import React from "react";
-import { View, Text, TextInput } from "react-native";
+import { View, Text, TextInput, StyleSheet } from "react-native";
 
 type Props = {
-    previewTotal: number;
-    laborCharge: string;
-    extraCharge: string;
-    remarks: string;
-    setLaborCharge: (v: string) => void;
-    setExtraCharge: (v: string) => void;
-    setRemarks: (v: string) => void;
+  previewTotal: number;
+  laborCharge: string;
+  extraCharge: string;
+  remarks: string;
+  setLaborCharge: (v: string) => void;
+  setExtraCharge: (v: string) => void;
+  setRemarks: (v: string) => void;
 };
 
 export default function Step4Final({
-    previewTotal,
-    laborCharge,
-    extraCharge,
-    remarks,
-    setLaborCharge,
-    setExtraCharge,
-    setRemarks,
+  previewTotal,
+  laborCharge,
+  extraCharge,
+  remarks,
+  setLaborCharge,
+  setExtraCharge,
+  setRemarks,
 }: Props) {
-    return (
-        <View>
-            <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 14 }}>
-                Final Charges
-            </Text>
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Final Charges</Text>
 
-            <View
-                style={{
-                    backgroundColor: "#f1f5f9",
-                    padding: 14,
-                    borderRadius: 8,
-                    marginBottom: 14,
-                }}
-            >
-                <Text style={{ color: "#64748b" }}>Preview Total</Text>
-                <Text style={{ fontSize: 20, fontWeight: "700" }}>
-                    ₹{previewTotal}
-                </Text>
-            </View>
+      {/* Preview Total */}
+      <View style={styles.totalBox}>
+        <Text style={styles.totalLabel}>Preview Total</Text>
+        <Text style={styles.totalValue}>₹{previewTotal}</Text>
+      </View>
 
-            <TextInput
-                style={{
-                    borderWidth: 1,
-                    borderColor: "#e5e7eb",
-                    borderRadius: 8,
-                    padding: 12,
-                    marginBottom: 10,
-                }}
-                placeholder="Labor Charge"
-                keyboardType="numeric"
-                value={laborCharge}
-                onChangeText={setLaborCharge}
-            />
+      {/* Labor Charge */}
+      <TextInput
+        style={styles.input}
+        placeholder="Labor Charge"
+        placeholderTextColor="#9ca3af"
+        keyboardType="numeric"
+        value={laborCharge}
+        onChangeText={setLaborCharge}
+      />
 
-            <TextInput
-                style={{
-                    borderWidth: 1,
-                    borderColor: "#e5e7eb",
-                    borderRadius: 8,
-                    padding: 12,
-                    marginBottom: 10,
-                }}
-                placeholder="Extra Charge"
-                keyboardType="numeric"
-                value={extraCharge}
-                onChangeText={setExtraCharge}
-            />
+      {/* Extra Charge */}
+      <TextInput
+        style={styles.input}
+        placeholder="Extra Charge"
+        placeholderTextColor="#9ca3af"
+        keyboardType="numeric"
+        value={extraCharge}
+        onChangeText={setExtraCharge}
+      />
 
-            <TextInput
-                style={{
-                    borderWidth: 1,
-                    borderColor: "#e5e7eb",
-                    borderRadius: 8,
-                    padding: 12,
-                    height: 90,
-                }}
-                placeholder="Remarks"
-                multiline
-                value={remarks}
-                onChangeText={setRemarks}
-            />
-        </View>
-    );
+      {/* Remarks */}
+      <TextInput
+        style={styles.remarksInput}
+        placeholder="Remarks"
+        placeholderTextColor="#9ca3af"
+        multiline
+        value={remarks}
+        onChangeText={setRemarks}
+      />
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: 24,
+  },
+
+  title: {
+    fontSize: 19,
+    fontWeight: "700",
+    marginBottom: 16,
+    color: "#111827",
+  },
+
+  totalBox: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+
+  totalLabel: {
+    fontSize: 13,
+    color: "#64748b",
+    marginBottom: 4,
+  },
+
+  totalValue: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#111827",
+  },
+
+  input: {
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    backgroundColor: "#fafafa",
+    fontSize: 14,
+  },
+
+  remarksInput: {
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: "#fafafa",
+    fontSize: 14,
+    height: 100,
+    textAlignVertical: "top",
+  },
+});

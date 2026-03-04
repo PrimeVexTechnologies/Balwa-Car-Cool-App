@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   BackHandler,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -24,13 +25,13 @@ const COLORS = {
   primary: "#2563eb",
   success: "#16a34a",
 
-  bg: "#f8fafc",
+  bg: "#f1f5f9",
   card: "#ffffff",
 
   text: "#0f172a",
   muted: "#64748b",
   gray: "#94a3b8",
-  border: "#e5e7eb",
+  border: "#e2e8f0",
 
   danger: "#ef4444",
 };
@@ -55,7 +56,7 @@ type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
 const dashboardCards: {
   title: string;
   description: string;
-  icon: any;
+  icon: keyof typeof Feather.glyphMap;
   route: AppRoute;
   color: string;
 }[] = [
@@ -75,17 +76,17 @@ const dashboardCards: {
   },
   {
     title: "Inventory",
-    description: "Manage stock",
+    description: "Manage stock items",
     icon: "box",
     route: ROUTES.INVENTORY,
-    color: "#7c2d12",
+    color: "#7c3aed",
   },
   {
     title: "Total Bills",
-    description: "Billing analytics",
+    description: "Billing analytics & reports",
     icon: "file-text",
     route: ROUTES.TOTAL_BILLS,
-    color: "#ca8a04",
+    color: "#d97706",
   },
 ];
 
@@ -106,9 +107,7 @@ export default function DashboardScreen() {
     monthBills: 0,
   });
 
-  /* ------------------------------------------------------------------ */
-  /* LOAD STATS */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- LOAD STATS ---------------- */
 
   const loadStats = async (isRefresh = false) => {
     try {
@@ -118,7 +117,6 @@ export default function DashboardScreen() {
       else setLoading(true);
 
       const { data, error } = await supabase.rpc("get_dashboard_stats");
-
       if (error) throw error;
 
       if (data) {
@@ -128,10 +126,8 @@ export default function DashboardScreen() {
           monthBills: data.month_bill_count ?? 0,
         });
       }
-    } catch (err) {
-      console.log("Dashboard error:", err);
-
-      setError("Failed to load dashboard data");
+    } catch {
+      setError("Unable to load dashboard data.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -142,9 +138,7 @@ export default function DashboardScreen() {
     loadStats();
   }, []);
 
-  /* ------------------------------------------------------------------ */
-  /* DISABLE BACK */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- DISABLE BACK ---------------- */
 
   useFocusEffect(
     useCallback(() => {
@@ -152,16 +146,14 @@ export default function DashboardScreen() {
 
       const sub = BackHandler.addEventListener(
         "hardwareBackPress",
-        onBackPress,
+        onBackPress
       );
 
       return () => sub.remove();
-    }, []),
+    }, [])
   );
 
-  /* ------------------------------------------------------------------ */
-  /* NAVIGATION */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- NAVIGATION ---------------- */
 
   const navigateTo = (route: AppRoute) => {
     try {
@@ -192,17 +184,16 @@ export default function DashboardScreen() {
 
       <View style={styles.header}>
         <Text style={styles.title}>Balwa Car Cool</Text>
-
-        <Text style={styles.subtitle}>Dashboard Overview</Text>
+        <Text style={styles.subtitle}>Business Overview</Text>
       </View>
 
       {/* ================= ERROR ================= */}
 
       {error !== "" && (
         <View style={styles.errorBox}>
+          <Feather name="alert-circle" size={18} color={COLORS.danger} />
           <Text style={styles.errorText}>{error}</Text>
-
-          <Pressable onPress={() => loadStats()} style={styles.retryBtn}>
+          <Pressable onPress={() => loadStats()}>
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
@@ -212,28 +203,23 @@ export default function DashboardScreen() {
 
       <View style={styles.statsRow}>
         <StatCard
-          label="Today"
+          label="Today Bills"
           value={loading ? "--" : stats.todayBills}
-          suffix="Bills"
         />
 
         <StatCard
-          label="Revenue"
+          label="Today's Revenue"
           value={
             loading
               ? "..."
-              : stats.todayRevenue === 0
-                ? "No Sales"
-                : `₹${stats.todayRevenue}`
+              : `₹${stats.todayRevenue}`
           }
-          suffix="Today"
           highlight
         />
 
         <StatCard
-          label="Month"
+          label="Month Bills"
           value={loading ? "--" : stats.monthBills}
-          suffix="Bills"
         />
       </View>
 
@@ -244,22 +230,22 @@ export default function DashboardScreen() {
           <Pressable
             key={card.title}
             onPress={() => navigateTo(card.route)}
+            android_ripple={{ color: "#e2e8f0" }}
             style={({ pressed }) => [
               styles.card,
               pressed && styles.cardPressed,
             ]}
           >
             <View style={[styles.cardIcon, { backgroundColor: card.color }]}>
-              <Feather name={card.icon} size={26} color="#fff" />
+              <Feather name={card.icon} size={24} color="#fff" />
             </View>
 
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle}>{card.title}</Text>
-
               <Text style={styles.cardText}>{card.description}</Text>
             </View>
 
-            <Feather name="chevron-right" size={22} color={COLORS.gray} />
+            <Feather name="chevron-right" size={20} color={COLORS.gray} />
           </Pressable>
         ))}
       </View>
@@ -274,23 +260,18 @@ export default function DashboardScreen() {
 function StatCard({
   label,
   value,
-  suffix,
   highlight,
 }: {
   label: string;
   value: string | number;
-  suffix: string;
   highlight?: boolean;
 }) {
   return (
-    <View style={styles.statPill}>
-      <Text style={styles.statSmallLabel}>{label}</Text>
-
-      <Text style={[styles.statMain, highlight && styles.revenue]}>
+    <View style={styles.statCard}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statValue, highlight && styles.highlight]}>
         {value}
       </Text>
-
-      <Text style={styles.statSub}>{suffix}</Text>
     </View>
   );
 }
@@ -306,19 +287,17 @@ const styles = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 50,
   },
 
-  /* Header */
-
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    marginBottom: 8,
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    marginBottom: 14,
   },
 
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontFamily: "Poppins-Bold",
     color: COLORS.text,
   },
@@ -327,114 +306,111 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Poppins-Regular",
     color: COLORS.muted,
-    marginTop: 2,
+    marginTop: 4,
   },
 
-  /* Error */
-
   errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     backgroundColor: "#fee2e2",
-    marginHorizontal: 16,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 10,
+    marginHorizontal: 20,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 14,
   },
 
   errorText: {
+    flex: 1,
     color: "#b91c1c",
     fontSize: 13,
     fontFamily: "Poppins-Medium",
   },
 
-  retryBtn: {
-    marginTop: 6,
-    alignSelf: "flex-start",
-  },
-
   retryText: {
     color: COLORS.primary,
-    fontSize: 13,
     fontFamily: "Poppins-SemiBold",
   },
 
-  /* Stats */
-
   statsRow: {
     flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 16,
-    marginTop: 12,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
 
-  statPill: {
+  statCard: {
     flex: 1,
     backgroundColor: COLORS.card,
-    borderRadius: 18,
-    paddingVertical: 16,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: "center",
+    marginHorizontal: 4,
 
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
 
-  statSmallLabel: {
+  statLabel: {
     fontSize: 12,
     fontFamily: "Poppins-Medium",
     color: COLORS.muted,
   },
 
-  statMain: {
-    fontSize: 22,
+  statValue: {
+    fontSize: 20,
     fontFamily: "Poppins-Bold",
+    marginTop: 6,
     color: COLORS.text,
-    marginVertical: 3,
   },
 
-  revenue: {
+  highlight: {
     color: COLORS.success,
   },
 
-  statSub: {
-    fontSize: 11,
-    fontFamily: "Poppins-Regular",
-    color: COLORS.gray,
-  },
-
-  /* Cards */
-
   container: {
-    padding: 16,
+    paddingHorizontal: 20,
     gap: 14,
-    marginTop: 10,
   },
 
   card: {
     backgroundColor: COLORS.card,
     borderRadius: 18,
     padding: 18,
-
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 16,
 
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 6 },
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
 
   cardPressed: {
     transform: [{ scale: 0.97 }],
-    opacity: 0.9,
   },
 
   cardIcon: {
-    width: 52,
-    height: 52,
+    width: 50,
+    height: 50,
     borderRadius: 14,
-
     alignItems: "center",
     justifyContent: "center",
   },
@@ -453,6 +429,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Poppins-Regular",
     color: COLORS.muted,
-    marginTop: 2,
+    marginTop: 4,
   },
 });
