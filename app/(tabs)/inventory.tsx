@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingTop: 24,
-    marginBottom: 16,
+    marginBottom: 18,
   },
 
   title: {
@@ -493,12 +493,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     paddingVertical: 10,
     paddingHorizontal: 18,
-    borderRadius: 16,
+    borderRadius: 14,
   },
 
   addText: {
     color: "#fff",
     fontFamily: "Poppins-SemiBold",
+    fontSize: 14,
   },
 
   list: {
@@ -507,14 +508,14 @@ const styles = StyleSheet.create({
 
   productCard: {
     backgroundColor: COLORS.card,
-    borderRadius: 22,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 16,
 
     shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
 
   productHeader: {
@@ -538,7 +539,7 @@ const styles = StyleSheet.create({
   variantRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderColor: COLORS.border,
   },
@@ -570,9 +571,9 @@ const styles = StyleSheet.create({
 
   editBtn: {
     backgroundColor: "#eff6ff",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 10,
   },
 
   editText: {
@@ -607,15 +608,15 @@ const styles = StyleSheet.create({
 
   modalSheet: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 20,
   },
 
   modalTitle: {
     fontSize: 18,
     fontFamily: "Poppins-Bold",
-    marginBottom: 12,
+    marginBottom: 14,
   },
 
   editLabel: {
@@ -628,8 +629,9 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14,
-    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     marginBottom: 12,
     fontFamily: "Poppins-Regular",
   },
@@ -637,9 +639,9 @@ const styles = StyleSheet.create({
   pill: {
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 20,
+    borderRadius: 18,
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 7,
     marginRight: 8,
     marginBottom: 10,
   },
@@ -662,19 +664,20 @@ const styles = StyleSheet.create({
 
   primaryBtn: {
     backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 14,
-    marginTop: 6,
+    paddingVertical: 13,
+    borderRadius: 12,
+    marginTop: 8,
     alignItems: "center",
   },
 
   primaryText: {
     color: "#fff",
     fontFamily: "Poppins-SemiBold",
+    fontSize: 15,
   },
 
   deleteBtn: {
-    marginTop: 10,
+    marginTop: 12,
   },
 
   deleteText: {
