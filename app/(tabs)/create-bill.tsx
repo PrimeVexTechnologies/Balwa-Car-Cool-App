@@ -64,40 +64,32 @@ const COLORS = {
 
 export default function CreateBillScreen() {
   /* Steps */
-
   const [step, setStep] = useState<number>(1);
 
   /* Status */
-
   const [loading, setLoading] = useState(false);
   const [fetchingCar, setFetchingCar] = useState(false);
   const [error, setError] = useState("");
-
   const [step1Error, setStep1Error] = useState("");
 
   /* Lists */
-
   const [servicesList, setServicesList] = useState<Service[]>([]);
   const [problemsList, setProblemsList] = useState<Problem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
 
   /* Problems */
-
   const [problems, setProblems] = useState<string[]>([]);
   const [otherProblem, setOtherProblem] = useState("");
 
   /* Services */
-
   const [services, setServices] = useState<Record<string, SelectedService>>({});
 
   /* Charges */
-
   const [laborCharge, setLaborCharge] = useState("");
   const [extraCharge, setExtraCharge] = useState("");
   const [remarks, setRemarks] = useState("");
 
   /* Modal */
-
   const [modalVisible, setModalVisible] = useState(false);
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
   // const [variants, setVariants] = useState<Variant[]>([]);
