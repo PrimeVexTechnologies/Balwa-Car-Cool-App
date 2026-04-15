@@ -130,6 +130,32 @@ export default function ServiceHistoryScreen() {
   /* DOWNLOAD PDF */
   /* ------------------------------------------------------------------ */
 
+  // const downloadInvoice = async () => {
+  //   if (!selectedBill || downloading) return;
+
+  //   try {
+  //     setDownloading(true);
+
+  //     const { data, error } = await supabase
+  //       .from("bill_files")
+  //       .select("pdf_url")
+  //       .eq("bill_id", selectedBill.id)
+  //       .single();
+
+  //     if (error) throw new Error("Could not fetch invoice file");
+  //     if (!data?.pdf_url) throw new Error("Invoice PDF not found");
+
+  //     // Open PDF in browser
+  //     await Linking.openURL(data.pdf_url);
+
+  //   } catch (err) {
+  //     Alert.alert("Download Failed", "Could not open invoice");
+  //   } finally {
+  //     setDownloading(false);
+  //   }
+  // };
+
+  // NEW DOWNLOAD METHOD - SAVE TO DEVICE
   const downloadInvoice = async () => {
     if (!selectedBill || downloading) return;
 
@@ -145,11 +171,36 @@ export default function ServiceHistoryScreen() {
       if (error) throw new Error("Could not fetch invoice file");
       if (!data?.pdf_url) throw new Error("Invoice PDF not found");
 
-      // Open PDF in browser
-      await Linking.openURL(data.pdf_url);
+      // File path
+      const fileUri =
+        FileSystem.documentDirectory +
+        `invoice-${selectedBill.invoice_no}.pdf`;
+
+      // Download file
+      const { uri } = await FileSystem.downloadAsync(
+        data.pdf_url,
+        fileUri
+      );
+
+      // Ask permission
+      const permission = await MediaLibrary.requestPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          "Permission required",
+          "Allow storage access to save file"
+        );
+        return;
+      }
+
+      // Save to device
+      await MediaLibrary.createAssetAsync(uri);
+
+      Alert.alert("Success", "Invoice saved to device");
 
     } catch (err) {
-      Alert.alert("Download Failed", "Could not open invoice");
+      console.log("Download Error:", err);
+      Alert.alert("Download Failed", "Could not save invoice");
     } finally {
       setDownloading(false);
     }

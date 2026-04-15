@@ -19,8 +19,7 @@
       "package": "com.zaamirshaikh.BalwaCarCool",
       "permissions": [
         "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO",
-        "READ_MEDIA_AUDIO"
+        "READ_MEDIA_VIDEO"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -35,7 +34,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow access to save invoices",
+          "savePhotosPermission": "Allow saving invoices to your device"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
