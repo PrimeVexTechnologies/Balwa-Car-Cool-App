@@ -42,7 +42,7 @@ export default function BrandingScreen() {
         const timer = setTimeout(() => {
             const isLoggedIn = true;
             router.replace(isLoggedIn ? "/dashboard" : "/login");
-        }, 2500);
+        }, 3000);
 
         return () => clearTimeout(timer);
     }, []);
