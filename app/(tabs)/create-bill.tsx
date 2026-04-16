@@ -19,6 +19,7 @@ import {
 } from "react-native";
 
 import { supabase } from "@/src/core/lib/supabase";
+import { useRouter } from "expo-router";
 
 import Step1Vehicle from "@/src/features/billing/components/Step1Vehicle";
 import Step2Problems from "@/src/features/billing/components/Step2Problems";
@@ -106,6 +107,8 @@ export default function CreateBillScreen() {
     mobile: "",
     carModel: "",
   });
+
+  const router = useRouter();
 
   /* ---------------- LOAD DATA ---------------- */
 
@@ -372,7 +375,7 @@ export default function CreateBillScreen() {
                     `Invoice ${res.invoice_no} generated`,
                   );
 
-                  setStep(1);
+                  router.replace("/(tabs)/service-history");
                 } catch (err: any) {
                   setError(err.message || "Failed");
                 } finally {

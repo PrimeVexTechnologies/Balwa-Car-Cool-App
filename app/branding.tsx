@@ -40,7 +40,8 @@ export default function BrandingScreen() {
         );
 
         const timer = setTimeout(() => {
-            router.replace("/(tabs)");
+            const isLoggedIn = true;
+            router.replace(isLoggedIn ? "/dashboard" : "/login");
         }, 2500);
 
         return () => clearTimeout(timer);
@@ -81,39 +82,39 @@ export default function BrandingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8fafc",
-  },
+    container: {
+        flex: 1,
+        backgroundColor: "#f8fafc",
+    },
 
-  gradient: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+    gradient: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
 
-  contentWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 28,
-  },
+    contentWrapper: {
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 28,
+    },
 
-  brandText: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#0f172a",
-    letterSpacing: -0.4,
-    textAlign: "center",
-    marginBottom: 14,
-  },
+    brandText: {
+        fontSize: 30,
+        fontWeight: "800",
+        color: "#0f172a",
+        letterSpacing: -0.4,
+        textAlign: "center",
+        marginBottom: 14,
+    },
 
-  taglineText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#64748b",
-    letterSpacing: 0.4,
-    textAlign: "center",
-    lineHeight: 18,
-    opacity: 0.9,
-  },
+    taglineText: {
+        fontSize: 13,
+        fontWeight: "500",
+        color: "#64748b",
+        letterSpacing: 0.4,
+        textAlign: "center",
+        lineHeight: 18,
+        opacity: 0.9,
+    },
 });

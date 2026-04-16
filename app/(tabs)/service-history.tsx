@@ -1,7 +1,8 @@
 import { supabase } from "@/src/core/lib/supabase";
 import { Feather } from "@expo/vector-icons";
+import * as Sharing from "expo-sharing";
+
 import * as FileSystem from "expo-file-system/legacy";
-import * as MediaLibrary from "expo-media-library";
 import * as Linking from "expo-linking";
 import { useEffect, useState } from "react";
 import {
@@ -206,6 +207,40 @@ export default function ServiceHistoryScreen() {
     }
   };
 
+  // Alternate Donwload + Share using Expo Sharing
+  const openInvoice = async () => {
+    if (!selectedBill || downloading) return;
+
+    try {
+      setDownloading(true);
+
+      const { data, error } = await supabase
+        .from("bill_files")
+        .select("pdf_url")
+        .eq("bill_id", selectedBill.id)
+        .single();
+
+      if (error) throw new Error("Invoice not found");
+
+      const fileUri =
+        FileSystem.documentDirectory +
+        `invoice-${selectedBill.invoice_no}.pdf`;
+
+      const { uri } = await FileSystem.downloadAsync(
+        data.pdf_url,
+        fileUri
+      );
+
+      await Sharing.shareAsync(uri);
+
+    } catch (err) {
+      console.log(err);
+      Alert.alert("Error", "Could not open invoice");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   /* ------------------------------------------------------------------ */
   /* SEARCH */
   /* ------------------------------------------------------------------ */
@@ -384,7 +419,7 @@ export default function ServiceHistoryScreen() {
                     styles.downloadBtn,
                     downloading && styles.btnDisabled,
                   ]}
-                  onPress={downloadInvoice}
+                  onPress={openInvoice}
                   disabled={downloading}
                 >
                   {downloading ? (
